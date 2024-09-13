@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Sorane\Sorane\Commands\SoraneTestCommand;
-use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 
 class SoraneServiceProvider extends PackageServiceProvider
 {

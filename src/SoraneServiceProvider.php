@@ -2,11 +2,11 @@
 
 namespace Sorane\Sorane;
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Http;
+use Sorane\Sorane\Commands\SoraneTestCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Sorane\Sorane\Commands\SoraneTestCommand;
-use Illuminate\Contracts\Debug\ExceptionHandler;
 
 class SoraneServiceProvider extends PackageServiceProvider
 {
@@ -18,7 +18,7 @@ class SoraneServiceProvider extends PackageServiceProvider
             ->hasCommand(SoraneTestCommand::class);
     }
 
-    public function boot(): void
+    public function packageBooted(): void
     {
         $this->registerExceptionHandler();
     }

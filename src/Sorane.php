@@ -6,10 +6,11 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Carbon;
+use Throwable;
 
 class Sorane
 {
-    public function report(\Throwable $exception): void
+    public function report(Throwable $exception): void
     {
         $request = Request::instance();
         $user = Auth::user();

@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\Sorane\Commands;
+namespace Sorane\ErrorReporting\Commands;
 
 use Illuminate\Console\Command;
 

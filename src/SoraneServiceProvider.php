@@ -1,8 +1,8 @@
 <?php
 
-namespace Sorane\Sorane;
+namespace Sorane\ErrorReporting;
 
-use Sorane\Sorane\Commands\SoraneTestCommand;
+use Sorane\ErrorReporting\Commands\SoraneTestCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -12,7 +12,7 @@ class SoraneServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('sorane-laravel')
-            ->hasConfigFile()
+            ->hasConfigFile('sorane')
             ->hasCommand(SoraneTestCommand::class);
     }
 }

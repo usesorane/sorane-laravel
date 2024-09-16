@@ -1,11 +1,10 @@
 <?php
 
-namespace Sorane\Sorane;
+namespace Sorane\ErrorReporting;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
 
 class Sorane
@@ -71,10 +70,9 @@ class Sorane
         ];
 
         try {
-            Http::withToken(config('services.sorane.key'))
+            Http::withToken(config('sorane.key'))
                 ->post('https://api.sorane.io/v1/report', $data);
         } catch (\Throwable $e) {
-            // Do nothing
         }
     }
 }

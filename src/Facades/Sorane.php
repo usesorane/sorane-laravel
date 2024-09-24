@@ -18,7 +18,7 @@ class Sorane extends Facade
 
     public static function handles(Exceptions $exceptions): void
     {
-        $exceptions->reportable(static function (Throwable $exception): Sorane {
+        $exceptions->reportable(static function (Throwable $exception): \Sorane\ErrorReporting\Sorane {
             $sorane = app(\Sorane\ErrorReporting\Sorane::class);
 
             $sorane->report($exception);

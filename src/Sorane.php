@@ -21,40 +21,64 @@ class Sorane
         // Get Laravel version
         $laravelVersion = app()->version();
 
-        // Get headers
-        $headers = $request->headers->all();
+        // Initialize headers, URL, and method as null
+        $headers = null;
+        $url = null;
+        $method = null;
 
-        // Remove sensitive headers
-        $sensitiveHeaders = ['cookie', 'authorization', 'x-csrf-token', 'x-xsrf-token'];
+        // Determine if the error occurred in a console command
+        $isConsole = app()->runningInConsole();
 
-        $headers = array_map(function ($value, $header) use ($sensitiveHeaders) {
-            return in_array($header, $sensitiveHeaders) ? '***' : $value;
-        }, $headers, array_keys($headers));
+        // If the error occurred via HTTP, gather request data
+        if (! $isConsole) {
+            // Get headers
+            $headers = $request->headers->all();
 
-        $headers = json_encode($headers);
+            // Remove sensitive headers
+            $sensitiveHeaders = ['cookie', 'authorization', 'x-csrf-token', 'x-xsrf-token'];
 
-        // Get code
+            foreach ($headers as $header => &$value) {
+                if (in_array($header, $sensitiveHeaders)) {
+                    $value = '***';  // Mask sensitive headers
+                }
+            }
+
+            $headers = json_encode($headers);
+
+            $url = $request->fullUrl();
+            $method = $request->method();
+        }
+
+        // Get code context
         $file = $exception->getFile();
         $line = $exception->getLine();
         $context = null;
-        $highlightLine = null; // Initialize highlight line
+        $highlightLine = null;
 
-        // Get the contents of the file to send surrounding code context
         if (is_readable($file) && filesize($file) < 1024 * 1024) { // Limit to 1MB
             $lines = file($file);
             if (is_array($lines)) {
                 $startLine = max(0, $line - 6); // 5 lines before the error line
                 $contextLines = array_slice($lines, $startLine, 11, true); // Total 11 lines
-
-                // Clean up the code context (remove extra spaces/indents)
                 $context = $this->cleanCode(implode('', $contextLines));
-
-                // Calculate the highlight line (relative position within the context)
-                $highlightLine = $line - $startLine; // This gives the position of the error line in the 11 lines slice
+                $highlightLine = $line - $startLine; // Relative line to highlight
             }
         }
 
-        $time = Carbon::now()->toDateTimeString();
+        // Gather console-specific data if applicable
+        $consoleCommand = null;
+        $consoleArguments = null;
+        $consoleOptions = null;
+
+        if ($isConsole) {
+            // Get the command and its input if available
+            if (defined('ARTISAN_BINARY')) {
+                $consoleCommand = implode(' ', $_SERVER['argv'] ?? []);
+            }
+
+            // You can gather arguments/options if available (e.g., in custom exception handlers)
+            $consoleArguments = json_encode(request()->server('argv') ?? []);
+        }
 
         // Trace
         $trace = $exception->getTraceAsString();
@@ -64,30 +88,31 @@ class Sorane
             $trace = substr($trace, 0, $maxTraceLength).'... (truncated)';
         }
 
+        $time = Carbon::now()->toDateTimeString();
+
+        // Data array to send
         $data = [
             'for' => 'sorane',
             'message' => $exception->getMessage(),
-            'file' => $exception->getFile(),
+            'file' => $file,
             'line' => $line,
             'type' => get_class($exception),
             'environment' => config('app.env'),
             'trace' => $trace,
-            'headers' => null,
+            'headers' => $headers,
             'context' => $context,
             'highlight_line' => $highlightLine,
             'user' => $user?->only('id', 'email'),
             'time' => $time,
-            'url' => null,
-            'method' => null,
+            'url' => $url,
+            'method' => $method,
             'php_version' => $phpVersion,
             'laravel_version' => $laravelVersion,
+            'is_console' => $isConsole,
+            'console_command' => $consoleCommand,
+            'console_arguments' => $consoleArguments,
+            'console_options' => $consoleOptions,
         ];
-
-        if ($request = Request::instance()) {
-            $data['url'] = $request->fullUrl();
-            $data['method'] = $request->method();
-            $data['headers'] = $headers;
-        }
 
         try {
             Http::withToken(config('sorane.key'))

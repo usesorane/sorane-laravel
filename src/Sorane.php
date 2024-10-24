@@ -45,7 +45,9 @@ class Sorane
             if (is_array($lines)) {
                 $startLine = max(0, $line - 6); // 5 lines before the error line
                 $contextLines = array_slice($lines, $startLine, 11, true); // Total 11 lines
-                $context = implode('', $contextLines);
+
+                // Clean up the code context (remove extra spaces/indents)
+                $context = $this->cleanCode(implode('', $contextLines));
 
                 // Calculate the highlight line (relative position within the context)
                 $highlightLine = $line - $startLine; // This gives the position of the error line in the 11 lines slice
@@ -67,13 +69,16 @@ class Sorane
             'message' => $exception->getMessage(),
             'file' => $exception->getFile(),
             'line' => $line,
+            'type' => get_class($exception),
+            'environment' => config('app.env'),
+            'trace' => $trace,
+            'headers' => null,
             'context' => $context,
             'highlight_line' => $highlightLine,
-            'trace' => $trace,
-            'type' => get_class($exception),
-            'time' => $time,
-            'environment' => config('app.env'),
             'user' => $user?->only('id', 'email'),
+            'time' => $time,
+            'url' => null,
+            'method' => null,
             'php_version' => $phpVersion,
             'laravel_version' => $laravelVersion,
         ];
@@ -82,10 +87,6 @@ class Sorane
             $data['url'] = $request->fullUrl();
             $data['method'] = $request->method();
             $data['headers'] = $headers;
-        } else {
-            $data['url'] = null;
-            $data['method'] = null;
-            $data['headers'] = null;
         }
 
         try {
@@ -95,5 +96,37 @@ class Sorane
                 ->post('https://api.sorane.io/v1/report', $data);
         } catch (\Throwable $e) {
         }
+    }
+
+    private function cleanCode(string $code): string
+    {
+        // Split the code into individual lines
+        $lines = explode("\n", $code);
+
+        // Trim each line to remove leading/trailing whitespace
+        $trimmedLines = array_map('rtrim', $lines);
+
+        // Find the first line with actual content and determine the minimum indentation
+        $minIndent = null;
+        foreach ($trimmedLines as $line) {
+            if (trim($line) !== '') { // Skip empty lines
+                $indent = strlen($line) - strlen(ltrim($line));
+                if ($minIndent === null || $indent < $minIndent) {
+                    $minIndent = $indent;
+                }
+            }
+        }
+
+        // Remove the minimum indentation from all lines
+        if ($minIndent > 0) {
+            foreach ($trimmedLines as &$line) {
+                if (trim($line) !== '') {
+                    $line = substr($line, $minIndent);
+                }
+            }
+        }
+
+        // Rejoin the lines and return the cleaned-up code
+        return implode("\n", $trimmedLines);
     }
 }

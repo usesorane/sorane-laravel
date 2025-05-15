@@ -2,8 +2,8 @@
 
 return [
     'key' => env('SORANE_KEY'),
-    'analytics' => [
-        'enabled' => true,
-        'queue' => 'default',
+    'website_analytics' => [
+        'enabled' => env('SORANE_WEBSITE_ANALYTICS_ENABLED', false),
+        'queue' => env('SORANE_WEBSITE_ANALYTICS_QUEUE', 'default'),
     ],
 ];

@@ -11,7 +11,7 @@ class SoraneServiceProvider extends PackageServiceProvider
 {
     public function bootingPackage(): void
     {
-        if (config('sorane.analytics.enabled')) {
+        if (config('sorane.website_analytics.enabled')) {
             $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
         }
     }

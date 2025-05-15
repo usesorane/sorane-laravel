@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class SendPageVisitToSoraneJob implements ShouldQueue
@@ -25,9 +26,45 @@ class SendPageVisitToSoraneJob implements ShouldQueue
 
     public function handle(): void
     {
-        // For now, just log the data
-        Log::info('[QUEUE] Sending page visit to Sorane', $this->visitData);
+        $apiKey = config('sorane.key');
 
-        // In future: call Sorane API here
+        if (empty($apiKey)) {
+            Log::warning('Sorane API key is not set. Visit data will not be sent.');
+
+            return;
+        }
+
+        $payload = $this->filterPayload($this->visitData);
+
+        try {
+            Http::withToken($apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Analytics/1.0',
+                ])
+                ->timeout(5)
+                ->post('https://api.sorane.io/v1/analytics/visit', $payload);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send visit data to Sorane: '.$e->getMessage());
+        }
+    }
+
+    protected function filterPayload(array $data): array
+    {
+        return collect($data)->only([
+            'url',
+            'path',
+            'timestamp',
+            'referrer',
+            'country_code',
+            'device_type',
+            'browser_name',
+            'utm_source',
+            'utm_medium',
+            'utm_campaign',
+            'utm_content',
+            'utm_term',
+            'session_id_hash',
+            'user_agent_hash',
+        ])->toArray();
     }
 }

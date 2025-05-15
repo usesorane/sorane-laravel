@@ -13,6 +13,19 @@ class TrackPageVisit
 {
     public function handle(Request $request, Closure $next)
     {
+        // Check for internal requests
+        if ($request->header('X-Client-Mode') === 'passive') {
+            return $next($request);
+        }
+
+        // Excluded paths
+        $excludedPaths = config('sorane.website_analytics.excluded_paths', []);
+        $firstSegment = explode('/', ltrim($request->path(), '/'))[0];
+
+        if (in_array($firstSegment, $excludedPaths, true)) {
+            return $next($request);
+        }
+
         // Is this a request from a crawler?
         $crawlerDetect = new CrawlerDetect;
         if ($crawlerDetect->isCrawler($request->userAgent())) {

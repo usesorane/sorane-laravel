@@ -26,6 +26,14 @@ class TrackPageVisit
             return $next($request);
         }
 
+        // Excluded Users
+        $ignoreUserCallback = config('sorane.website_analytics.ignore_if_user');
+        $user = $request->user();
+
+        if ($user && is_callable($ignoreUserCallback) && $ignoreUserCallback($user)) {
+            return $next($request);
+        }
+
         // Is this a request from a crawler?
         $crawlerDetect = new CrawlerDetect;
         if ($crawlerDetect->isCrawler($request->userAgent())) {

@@ -51,7 +51,7 @@ return [
             'livewire',
             '_debugbar',
         ],
-        'ignore_if_user' => null,
+        'request_filter' => null,
     ],
 ];
 ```

@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Jaybizzle\CrawlerDetect\CrawlerDetect;
+use Sorane\ErrorReporting\Analytics\Contracts\RequestFilter;
 use Sorane\ErrorReporting\Analytics\VisitDataCollector;
 use Sorane\ErrorReporting\Jobs\SendPageVisitToSoraneJob;
 
@@ -26,12 +27,16 @@ class TrackPageVisit
             return $next($request);
         }
 
-        // Excluded Users
-        $ignoreUserCallback = config('sorane.website_analytics.ignore_if_user');
-        $user = $request->user();
+        // Request Filter
+        $filterClass = config('sorane.website_analytics.request_filter');
 
-        if ($user && is_callable($ignoreUserCallback) && $ignoreUserCallback($user)) {
-            return $next($request);
+        if ($filterClass && class_exists($filterClass)) {
+            /** @var RequestFilter $filter */
+            $filter = app($filterClass);
+
+            if ($filter->shouldSkip($request)) {
+                return $next($request);
+            }
         }
 
         // Is this a request from a crawler?

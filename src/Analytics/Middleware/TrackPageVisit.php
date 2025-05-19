@@ -14,6 +14,11 @@ class TrackPageVisit
 {
     public function handle(Request $request, Closure $next)
     {
+        // Skip if the request does not have a user agent
+        if (! $request->userAgent()) {
+            return $next($request);
+        }
+
         // Check for internal requests
         if ($request->header('X-Client-Mode') === 'passive') {
             return $next($request);

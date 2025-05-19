@@ -11,16 +11,12 @@ class VisitDataCollector
         $userAgent = $request->userAgent();
         $url = $request->fullUrl();
 
-        // Check if development mode should preserve the unhashed user agent
-        // Never use this in production, Sorane will reject non-hashed user agents
-        $preserveUserAgent = config('sorane.website_analytics.debug.preserve_user_agent', false);
-
         return [
             'url' => $url,
             'path' => parse_url($url, PHP_URL_PATH) ?? '/',
             'ip' => $request->ip(), // Only used internally to resolve geo
             'user_agent' => $userAgent,
-            'user_agent_hash' => $preserveUserAgent ? $userAgent : hash('sha256', $userAgent),
+            'user_agent_hash' => hash('sha256', $userAgent),
 
             'referrer' => $request->headers->get('referer'),
 

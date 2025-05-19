@@ -50,7 +50,7 @@ class SendPageVisitToSoraneJob implements ShouldQueue
 
     protected function filterPayload(array $data): array
     {
-        return collect($data)->only([
+        $keys = [
             'url',
             'path',
             'timestamp',
@@ -65,6 +65,18 @@ class SendPageVisitToSoraneJob implements ShouldQueue
             'utm_term',
             'session_id_hash',
             'user_agent_hash',
-        ])->toArray();
+        ];
+
+        // Development mode that preserves the unhashed user agent
+        // Using this setting in production is pointless and unsafe
+        // Sorane will ignore non-hashed user agents
+        $preserveUserAgent = config('sorane.website_analytics.debug.preserve_user_agent', false);
+        if ($preserveUserAgent) {
+            $keys[] = 'user_agent';
+        }
+
+        return collect($data)
+            ->only($keys)
+            ->toArray();
     }
 }

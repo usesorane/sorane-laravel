@@ -44,11 +44,49 @@ class TrackPageVisit
             }
         }
 
+        // Filter out unrealistic user agents
+        $userAgent = $request->userAgent();
+
+        // Check for extremely short user agents
+        if (strlen($userAgent) < 10) {
+            return $next($request);
+        }
+
+        // Check for excessively long user agents
+        if (strlen($userAgent) > 1000) {
+            return $next($request);
+        }
+
+        // List of suspicious patterns that might indicate a fake user agent
+        $suspiciousPatterns = [
+            'suspicious', 'fake', 'test', 'localhost', 'postman',
+            'curl/', 'wget/', 'python-requests', 'empty',
+            'clearly-fake', 'not-a-browser', 'unknown',
+        ];
+
+        foreach ($suspiciousPatterns as $pattern) {
+            if (stripos($userAgent, $pattern) !== false) {
+                return $next($request);
+            }
+        }
+
         // Is this a request from a crawler?
         $crawlerDetect = new CrawlerDetect;
         if ($crawlerDetect->isCrawler($request->userAgent())) {
             // Don't track crawlers
             return $next($request);
+        }
+
+        // Check if the request is from a bot we know, but are not detected by CrawlerDetect
+        $extraBotUserAgents = [
+            'SaaSHub',
+        ];
+
+        foreach ($extraBotUserAgents as $botUserAgent) {
+            if ($crawlerDetect->isCrawler($botUserAgent)) {
+                // Don't track crawlers
+                return $next($request);
+            }
         }
 
         // Collect visit data

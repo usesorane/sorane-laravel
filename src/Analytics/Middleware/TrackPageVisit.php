@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Jaybizzle\CrawlerDetect\CrawlerDetect;
 use Sorane\ErrorReporting\Analytics\Contracts\RequestFilter;
+use Sorane\ErrorReporting\Analytics\HumanProbabilityScorer;
 use Sorane\ErrorReporting\Analytics\VisitDataCollector;
 use Sorane\ErrorReporting\Jobs\SendPageVisitToSoraneJob;
 
@@ -70,7 +71,7 @@ class TrackPageVisit
             }
         }
 
-        // Is this a request from a crawler?
+        // Skip known crawlers (1st check, using CrawlerDetect)
         $crawlerDetect = new CrawlerDetect;
         if ($crawlerDetect->isCrawler($request->userAgent())) {
             // Don't track crawlers
@@ -80,6 +81,7 @@ class TrackPageVisit
         // Check if the request is from a bot we know, but are not detected by CrawlerDetect
         $extraBotUserAgents = [
             'SaaSHub',
+            'Mozilla/5.0 (compatible; InternetMeasurement/1.0; +https://internet-measurement.com/)',
         ];
 
         foreach ($extraBotUserAgents as $botUserAgent) {
@@ -89,14 +91,27 @@ class TrackPageVisit
             }
         }
 
+        // Use the human probability scoring system
+        $humanScore = HumanProbabilityScorer::score($request);
+
+        // Skip tracking for requests that are definitely or probably bots
+        //        $botClassifications = ['definitely_bot', 'probably_bot'];
+        //        if (in_array($humanScore['classification'], $botClassifications, true)) {
+        //            return $next($request);
+        //        }
+
         // Collect visit data
         $visitData = VisitDataCollector::collect($request);
+
+        // Add the human probability score to the visit data
+        $visitData['human_probability_score'] = $humanScore['score'];
+        $visitData['human_probability_reasons'] = $humanScore['reasons'];
 
         // Build a throttle key, based on the IP and path
         $cacheKey = 'sorane:visit:'.md5(
             $request->ip().'|'.
             $visitData['path'].'|'.
-            now()->format('Y-m-d-H-i') // optional: bucket by minute
+            now()->format('Y-m-d-H-i') // Bucket by minute
         );
 
         // Only dispatch the job if not sent recently

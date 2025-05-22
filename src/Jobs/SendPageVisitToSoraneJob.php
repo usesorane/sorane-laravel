@@ -65,6 +65,8 @@ class SendPageVisitToSoraneJob implements ShouldQueue
             'utm_term',
             'session_id_hash',
             'user_agent_hash',
+            'human_probability_score',
+            'human_probability_reasons',
         ];
 
         // Development mode that preserves the unhashed user agent

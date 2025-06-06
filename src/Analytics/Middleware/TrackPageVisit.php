@@ -82,6 +82,7 @@ class TrackPageVisit
         $extraBotUserAgents = [
             'SaaSHub',
             'Mozilla/5.0 (compatible; InternetMeasurement/1.0; +https://internet-measurement.com/)',
+            'ALittle Client',
         ];
 
         foreach ($extraBotUserAgents as $botUserAgent) {

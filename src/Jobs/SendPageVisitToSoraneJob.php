@@ -21,7 +21,7 @@ class SendPageVisitToSoraneJob implements ShouldQueue
         $this->visitData = $visitData;
 
         // Optionally assign queue name from config
-        $this->onQueue(config('sorane.analytics.queue', 'default'));
+        $this->onQueue(config('sorane.website_analytics.queue', 'default'));
     }
 
     public function handle(): void

@@ -31,7 +31,7 @@ class VisitDataCollector
 
             'country_code' => self::resolveCountryFromIp($request->ip()),
 
-            'session_id_hash' => self::generateSessionIdHash($request),
+            'session_id_hash' => FingerprintGenerator::generateSessionIdHash($request),
 
             'timestamp' => now()->toIso8601String(),
         ];
@@ -110,9 +110,7 @@ class VisitDataCollector
 
     protected static function generateSessionIdHash(Request $request): string
     {
-        // Rotate daily, non-persistent session hash
-        $raw = $request->ip().'|'.substr($request->userAgent(), 0, 100).'|'.now()->format('Y-m-d');
-
-        return hash('sha256', $raw);
+        // Use the shared fingerprint generator
+        return FingerprintGenerator::generateSessionIdHash($request);
     }
 }

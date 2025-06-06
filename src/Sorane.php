@@ -6,6 +6,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Request;
+use Sorane\ErrorReporting\Analytics\FingerprintGenerator;
+use Sorane\ErrorReporting\Events\EventTracker;
+use Sorane\ErrorReporting\Jobs\SendEventToSoraneJob;
 use Throwable;
 
 class Sorane
@@ -102,7 +105,7 @@ class Sorane
             'headers' => $headers,
             'context' => $context,
             'highlight_line' => $highlightLine,
-            'user' => $user?->only('id', 'email'),
+            'user' => $user ? ['id' => $user->id, 'email' => $user->email] : null,
             'time' => $time,
             'url' => $url,
             'method' => $method,
@@ -120,6 +123,37 @@ class Sorane
                 ->timeout(5)
                 ->post('https://api.sorane.io/v1/report', $data);
         } catch (\Throwable $e) {
+        }
+    }
+
+    public function trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true): void
+    {
+        if (!config('sorane.events.enabled', true)) {
+            return; 
+        }
+
+        // Validate event name by default (can be disabled for flexibility)
+        if ($validate) {
+            EventTracker::ensureValidEventName($eventName);
+        }
+
+        $user = $userId ? ['id' => $userId] : (Auth::user() ? ['id' => Auth::id()] : null);
+        
+        $eventData = [
+            'event_name' => $eventName,
+            'properties' => $properties,
+            'user' => $user,
+            'timestamp' => Carbon::now()->toISOString(),
+            'url' => request()->fullUrl(),
+            'user_agent_hash' => FingerprintGenerator::generateUserAgentHash(),
+            'session_id_hash' => FingerprintGenerator::generateSessionIdHash(),
+        ];
+
+        // Dispatch job to send event data
+        if (config('sorane.events.queue', true)) {
+            SendEventToSoraneJob::dispatch($eventData);
+        } else {
+            SendEventToSoraneJob::dispatchSync($eventData);
         }
     }
 

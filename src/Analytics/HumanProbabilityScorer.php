@@ -23,6 +23,7 @@ class HumanProbabilityScorer
         'user_agent_length' => 10,        // User agent with reasonable length
         'user_agent_suspicious' => -30,   // User agent contains suspicious patterns
         'user_agent_variety' => 15,       // User agent has a varied / complex structure
+        'user_agent_non_standard' => -25, // User agent lacks typical browser structure
 
         // Request behavior
         'has_referer' => 15,             // Request has a referer header
@@ -141,6 +142,9 @@ class HumanProbabilityScorer
         if (preg_match('/(?:Mozilla|AppleWebKit|Chrome|Safari|Firefox|Edge|MSIE|Trident).*(?:Windows NT|Macintosh|Linux|Android|iPhone|iPad).*(?:Chrome|Safari|Firefox|Edge|MSIE)/', $userAgent)) {
             $this->reasons[] = 'User agent has typical browser structure';
             $score += self::DEFAULT_WEIGHTS['user_agent_variety'];
+        } else {
+            $this->reasons[] = 'User agent lacks typical browser structure';
+            $score += self::DEFAULT_WEIGHTS['user_agent_non_standard']; // More severe penalty for non-standard structure
         }
 
         return $score;

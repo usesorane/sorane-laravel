@@ -5,6 +5,7 @@ namespace Sorane\ErrorReporting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Sorane\ErrorReporting\Analytics\FingerprintGenerator;
 use Sorane\ErrorReporting\Events\EventTracker;
@@ -118,18 +119,39 @@ class Sorane
         ];
 
         try {
-            Http::withToken(config('sorane.key'))
-                ->withHeaders(['User-Agent' => 'Sorane-Error-Reporter/1.0'])
+            $response = Http::withToken(config('sorane.key'))
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Error-Reporter/1.0',
+                    'Content-Type' => 'application/json',
+                ])
                 ->timeout(5)
                 ->post('https://api.sorane.io/v1/report', $data);
+
+            // Enhanced error handling for new API response format
+            if ($response->successful()) {
+                $responseData = $response->json();
+                if (isset($responseData['success']) && $responseData['success'] === false) {
+                    Log::warning('Sorane API returned error: '.($responseData['message'] ?? 'Unknown error'), [
+                        'error_code' => $responseData['error_code'] ?? null,
+                        'errors' => $responseData['errors'] ?? null,
+                    ]);
+                }
+            } else {
+                Log::error('Sorane API request failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
         } catch (\Throwable $e) {
+            // Log the failure but don't rethrow to avoid infinite loops
+            Log::warning('Failed to send error report to Sorane: '.$e->getMessage());
         }
     }
 
     public function trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true): void
     {
-        if (!config('sorane.events.enabled', true)) {
-            return; 
+        if (! config('sorane.events.enabled', true)) {
+            return;
         }
 
         // Validate event name by default (can be disabled for flexibility)
@@ -138,7 +160,7 @@ class Sorane
         }
 
         $user = $userId ? ['id' => $userId] : (Auth::user() ? ['id' => Auth::id()] : null);
-        
+
         $eventData = [
             'event_name' => $eventName,
             'properties' => $properties,

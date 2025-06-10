@@ -22,18 +22,18 @@ class SoraneEventTestCommand extends Command
         try {
             $this->info('   ✓ Valid event name: user_registered');
             SoraneEvents::custom('user_registered', ['source' => 'test']);
-            
+
             $this->info('   ✓ Using predefined constant: EventTracker::PRODUCT_ADDED_TO_CART');
             Sorane::trackEvent(EventTracker::PRODUCT_ADDED_TO_CART, ['test' => true]);
-            
+
             $this->info('   ⚠ Testing invalid event name (this will show validation error)...');
             try {
                 SoraneEvents::custom('Invalid Event Name!', []);
             } catch (\InvalidArgumentException $e) {
-                $this->warn('   Expected validation error: ' . $e->getMessage());
+                $this->warn('   Expected validation error: '.$e->getMessage());
             }
         } catch (\Exception $e) {
-            $this->error('Validation test failed: ' . $e->getMessage());
+            $this->error('Validation test failed: '.$e->getMessage());
         }
 
         // Test basic event tracking
@@ -70,7 +70,7 @@ class SoraneEventTestCommand extends Command
                     'name' => 'Super Gadget',
                     'price' => 29.99,
                     'quantity' => 1,
-                ]
+                ],
             ],
             currency: 'USD',
             additionalProperties: ['payment_method' => 'credit_card']
@@ -97,7 +97,7 @@ class SoraneEventTestCommand extends Command
 
         $this->info('✅ All test events have been sent to Sorane!');
         $this->info('Check your Sorane dashboard to see the events.');
-        
+
         $this->newLine();
         $this->info('Available Event Constants:');
         $this->table(
@@ -112,7 +112,7 @@ class SoraneEventTestCommand extends Command
                 ['EventTracker::NEWSLETTER_SIGNUP', EventTracker::NEWSLETTER_SIGNUP],
             ]
         );
-        
+
         $this->newLine();
         $this->info('Event Name Validation Rules:');
         $this->table(
@@ -125,7 +125,7 @@ class SoraneEventTestCommand extends Command
                 ['Examples', 'user_registered, product_added_to_cart, newsletter_signup'],
             ]
         );
-        
+
         $this->newLine();
         $this->info('Privacy-focused fingerprinting:');
         $this->table(
@@ -137,7 +137,7 @@ class SoraneEventTestCommand extends Command
                 ['User ID', 'Only if explicitly provided or user is authenticated'],
             ]
         );
-        
+
         $this->newLine();
         $this->info('Event tracking configuration:');
         $this->table(

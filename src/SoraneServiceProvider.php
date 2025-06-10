@@ -19,7 +19,7 @@ class SoraneServiceProvider extends PackageServiceProvider
 
         // Register EventTracker as singleton
         $this->app->singleton(EventTracker::class, function () {
-            return new EventTracker();
+            return new EventTracker;
         });
     }
 

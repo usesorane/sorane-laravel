@@ -13,9 +13,9 @@ class FingerprintGenerator
     public static function generateSessionIdHash(?Request $request = null): string
     {
         $request = $request ?: request();
-        
+
         // Rotate daily, non-persistent session hash
-        $raw = $request->ip() . '|' . substr($request->userAgent() ?? '', 0, 100) . '|' . now()->format('Y-m-d');
+        $raw = $request->ip().'|'.substr($request->userAgent() ?? '', 0, 100).'|'.now()->format('Y-m-d');
 
         return hash('sha256', $raw);
     }
@@ -27,7 +27,7 @@ class FingerprintGenerator
     {
         $request = $request ?: request();
         $userAgent = $request->userAgent();
-        
+
         return $userAgent ? hash('sha256', $userAgent) : null;
     }
 }

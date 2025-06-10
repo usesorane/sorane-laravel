@@ -2,7 +2,7 @@
 
 /**
  * Sorane Event Tracking Examples
- * 
+ *
  * This file demonstrates various ways to use Sorane's event tracking functionality
  * in a Laravel application.
  */
@@ -19,21 +19,21 @@ use Sorane\ErrorReporting\Facades\SoraneEvents;
 Sorane::trackEvent('button_clicked', [
     'button_id' => 'header-cta',
     'page' => 'homepage',
-    'section' => 'hero'
+    'section' => 'hero',
 ]);
 
 // Track a feature usage (using predefined constant)
 Sorane::trackEvent(EventTracker::SEARCH, [
     'query' => 'laravel tutorials',
     'results_count' => 42,
-    'filters_applied' => ['difficulty' => 'beginner']
+    'filters_applied' => ['difficulty' => 'beginner'],
 ]);
 
 // Track an event with specific user
 Sorane::trackEvent('settings_changed', [
     'setting_name' => 'email_notifications',
     'new_value' => 'enabled',
-    'old_value' => 'disabled'
+    'old_value' => 'disabled',
 ], $userId);
 
 // =====================================================
@@ -49,7 +49,7 @@ SoraneEvents::productAddedToCart(
     category: 'Education',
     additionalProperties: [
         'discount_applied' => false,
-        'source' => 'product_page'
+        'source' => 'product_page',
     ]
 );
 
@@ -63,21 +63,21 @@ SoraneEvents::sale(
             'name' => 'Premium Laravel Course',
             'price' => 199.99,
             'quantity' => 1,
-            'category' => 'Education'
+            'category' => 'Education',
         ],
         [
-            'id' => 'SKU-67890', 
+            'id' => 'SKU-67890',
             'name' => 'Vue.js Masterclass',
             'price' => 49.98,
             'quantity' => 1,
-            'category' => 'Education'
-        ]
+            'category' => 'Education',
+        ],
     ],
     currency: 'USD',
     additionalProperties: [
         'payment_method' => 'stripe',
         'coupon_code' => 'SAVE20',
-        'discount_amount' => 50.00
+        'discount_amount' => 50.00,
     ]
 );
 
@@ -91,7 +91,7 @@ SoraneEvents::userRegistered(
     additionalProperties: [
         'registration_source' => 'website',
         'referrer' => 'google',
-        'plan' => 'free'
+        'plan' => 'free',
     ]
 );
 
@@ -101,7 +101,7 @@ SoraneEvents::userLoggedIn(
     additionalProperties: [
         'login_method' => 'email',
         'remember_me' => true,
-        'two_factor' => false
+        'two_factor' => false,
     ]
 );
 
@@ -114,7 +114,7 @@ SoraneEvents::pageView(
     pageName: 'Pricing Page',
     additionalProperties: [
         'experiment_variant' => 'A',
-        'came_from' => 'homepage'
+        'came_from' => 'homepage',
     ]
 );
 
@@ -124,7 +124,7 @@ SoraneEvents::custom(
     properties: [
         'source' => 'blog_footer',
         'email_provided' => true,
-        'interests' => ['laravel', 'php', 'web-development']
+        'interests' => ['laravel', 'php', 'web-development'],
     ]
 );
 
@@ -134,7 +134,7 @@ SoraneEvents::custom(
     properties: [
         'file_name' => 'laravel-cheatsheet.pdf',
         'file_size' => '1.2MB',
-        'download_source' => 'resource_page'
+        'download_source' => 'resource_page',
     ]
 );
 
@@ -149,7 +149,7 @@ SoraneEvents::custom(
         'plan_name' => 'Pro Monthly',
         'plan_price' => 29.99,
         'trial_used' => true,
-        'payment_method' => 'credit_card'
+        'payment_method' => 'credit_card',
     ],
     userId: 123
 );
@@ -161,7 +161,7 @@ SoraneEvents::custom(
         'plan_name' => 'Pro Monthly',
         'cancellation_reason' => 'too_expensive',
         'days_active' => 45,
-        'will_reactivate' => false
+        'will_reactivate' => false,
     ],
     userId: 123
 );
@@ -177,7 +177,7 @@ SoraneEvents::custom(
         'endpoint' => '/api/v1/users',
         'limit' => 1000,
         'time_window' => '1 hour',
-        'user_plan' => 'free'
+        'user_plan' => 'free',
     ],
     userId: 123
 );
@@ -189,7 +189,7 @@ SoraneEvents::custom(
         'query_time' => 2.5,
         'query_type' => 'SELECT',
         'table' => 'users',
-        'affected_rows' => 10000
+        'affected_rows' => 10000,
     ]
 );
 
@@ -204,7 +204,7 @@ SoraneEvents::custom(
         'campaign_id' => 'welcome-series-01',
         'email_subject' => 'Welcome to our platform!',
         'link_clicked' => 'get-started-button',
-        'send_date' => '2024-01-15'
+        'send_date' => '2024-01-15',
     ],
     userId: 123
 );
@@ -216,7 +216,7 @@ SoraneEvents::custom(
         'content_type' => 'blog_post',
         'content_title' => 'How to Build APIs with Laravel',
         'share_platform' => 'twitter',
-        'content_id' => 'blog-post-123'
+        'content_id' => 'blog-post-123',
     ]
 );
 
@@ -231,7 +231,7 @@ SoraneEvents::custom(
         'ticket_id' => 'TICK-789',
         'category' => 'billing',
         'priority' => 'medium',
-        'source' => 'website'
+        'source' => 'website',
     ],
     userId: 123
 );
@@ -243,7 +243,7 @@ SoraneEvents::custom(
         'request_title' => 'Dark mode support',
         'request_category' => 'ui_ux',
         'votes_count' => 1,
-        'source' => 'feedback_widget'
+        'source' => 'feedback_widget',
     ],
     userId: 123
 );
@@ -261,5 +261,5 @@ SoraneEvents::customUnsafe(
 
 // Or use the main trackEvent method with validation disabled
 Sorane::trackEvent('Another Legacy Event!', [
-    'source' => 'migration_script'
+    'source' => 'migration_script',
 ], null, false); // validate: false

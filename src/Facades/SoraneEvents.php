@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Facade;
 
 /**
  * @see \Sorane\ErrorReporting\Events\EventTracker
+ *
  * @method static bool validateEventName(string $eventName)
  * @method static void ensureValidEventName(string $eventName)
  * @method static void productAddedToCart(string $productId, string $productName, float $price, int $quantity = 1, ?string $category = null, array $additionalProperties = [])

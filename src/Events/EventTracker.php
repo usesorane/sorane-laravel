@@ -2,29 +2,41 @@
 
 namespace Sorane\ErrorReporting\Events;
 
-use Sorane\ErrorReporting\Facades\Sorane;
 use InvalidArgumentException;
+use Sorane\ErrorReporting\Facades\Sorane;
 
 class EventTracker
 {
     // Standard event name constants to prevent typos and ensure consistency
     public const PRODUCT_ADDED_TO_CART = 'product_added_to_cart';
+
     public const PRODUCT_REMOVED_FROM_CART = 'product_removed_from_cart';
+
     public const CART_VIEWED = 'cart_viewed';
+
     public const CHECKOUT_STARTED = 'checkout_started';
+
     public const CHECKOUT_COMPLETED = 'checkout_completed';
+
     public const SALE = 'sale';
+
     public const USER_REGISTERED = 'user_registered';
+
     public const USER_LOGGED_IN = 'user_logged_in';
+
     public const USER_LOGGED_OUT = 'user_logged_out';
+
     public const PAGE_VIEW = 'page_view';
+
     public const SEARCH = 'search';
+
     public const NEWSLETTER_SIGNUP = 'newsletter_signup';
+
     public const CONTACT_FORM_SUBMITTED = 'contact_form_submitted';
 
     /**
      * Validate an event name to ensure it follows naming conventions
-     * 
+     *
      * Valid event names:
      * - snake_case format (lowercase with underscores)
      * - 3-50 characters long
@@ -47,11 +59,11 @@ class EventTracker
      */
     public static function ensureValidEventName(string $eventName): void
     {
-        if (!self::validateEventName($eventName)) {
+        if (! self::validateEventName($eventName)) {
             throw new InvalidArgumentException(
-                "Invalid event name '{$eventName}'. Event names must be 3-50 characters, " .
-                "use snake_case format (lowercase with underscores), start with a letter, " .
-                "and only contain letters, numbers, and underscores."
+                "Invalid event name '{$eventName}'. Event names must be 3-50 characters, ".
+                'use snake_case format (lowercase with underscores), start with a letter, '.
+                'and only contain letters, numbers, and underscores.'
             );
         }
     }

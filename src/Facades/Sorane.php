@@ -2,12 +2,13 @@
 
 namespace Sorane\ErrorReporting\Facades;
 
-use Illuminate\Support\Facades\Facade;
 use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Support\Facades\Facade;
 use Throwable;
 
 /**
  * @see \Sorane\ErrorReporting\Sorane
+ *
  * @method static void trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true)
  */
 class Sorane extends Facade

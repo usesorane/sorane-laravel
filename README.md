@@ -1,13 +1,4 @@
-# Error Sorane is an all-in-one tool for Error Tracking, Website Analytics, Event Tracking, and Website Monitoring for websites made with Laravel.
-
-It alerts you about errors in your applications and provides the context you need to fix them.
-
-Sorane's Website Analytics is fully server-side, with a focus on privacy-first tracking.
-It collects only essential visit data without cookies, invasive fingerprinting, or intrusive scripts.
-
-Sorane's Event Tracking allows you to track custom events in your application, such as product purchases, user registrations, and other important business metrics.
-
-It also keeps an eye on your website's health. Sorane monitors uptime, performance, SSL certificates, domain and DNS status, Lighthouse scores, and broken links. So when something goes wrong, you'll know., Website Analytics, Event Tracking and Website Monitoring for Laravel
+# Sorane: Web Application Monitoring for Laravel.
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/usesorane/sorane-laravel.svg?style=flat-square)](https://packagist.org/packages/usesorane/sorane-laravel)
 [![Total Downloads](https://img.shields.io/packagist/dt/usesorane/sorane-laravel.svg?style=flat-square)](https://packagist.org/packages/usesorane/sorane-laravel)
@@ -20,7 +11,7 @@ Sorane is an all-in-one tool for Error Tracking, Website Analytics, and Website 
 It alerts you about errors in your applications and provides the context you need to fix them.
 
 Sorane’s Website Analytics is fully server-side, with a focus on privacy-first tracking.
-It collects only essential visit data without cookies, invasive fingerprinting, or intrusive scripts.
+It only collects essential visit data without cookies, invasive fingerprinting, or intrusive scripts.
 
 It also keeps an eye on your website’s health. Sorane monitors uptime, performance, SSL certificates, domain and DNS status, Lighthouse scores, and broken links. So when something goes wrong, you’ll know.
 
@@ -49,6 +40,15 @@ return [
         'enabled' => env('SORANE_EVENTS_ENABLED', true),
         'queue' => env('SORANE_EVENTS_QUEUE', true),
         'queue_name' => env('SORANE_EVENTS_QUEUE_NAME', 'default'),
+    ],
+    'logging' => [
+        'enabled' => env('SORANE_LOGGING_ENABLED', false),
+        'queue' => env('SORANE_LOGGING_QUEUE', true),
+        'queue_name' => env('SORANE_LOGGING_QUEUE_NAME', 'default'),
+        'levels' => env('SORANE_LOGGING_LEVELS', 'notice,warning,error,critical,alert,emergency'),
+        'excluded_channels' => [
+            'sorane', // Prevent infinite loops
+        ],
     ],
     'website_analytics' => [
         'enabled' => env('SORANE_WEBSITE_ANALYTICS_ENABLED', false),
@@ -245,6 +245,114 @@ php artisan sorane:test-events
 ```
 
 This will send various test events to your Sorane dashboard.
+
+### Centralized Logging
+
+Sorane provides centralized logging capabilities that capture and store all your application logs in one place. This makes it easy to monitor, search, and analyze log data across your entire application.
+
+**Laravel Integration**: The recommended approach is to integrate Sorane with Laravel's built-in logging system using log stacks.
+
+#### Laravel Logging Integration (Recommended)
+
+Add the Sorane driver to your `config/logging.php`:
+
+```php
+'channels' => [
+    'sorane' => [
+        'driver' => 'sorane',
+        'level' => 'error',
+    ],
+    
+    // Recommended: Create a stack for production
+    'production' => [
+        'driver' => 'stack',
+        'channels' => ['single', 'sorane'],
+        'ignore_exceptions' => false,
+    ],
+],
+```
+
+Set your log channel in `config/app.php` or `.env`:
+
+```env
+LOG_CHANNEL=production
+```
+
+Now all your application logs will automatically be sent to both files and Sorane:
+
+```php
+use Illuminate\Support\Facades\Log;
+
+// These automatically go to both file and Sorane
+Log::error('Database connection failed', [
+    'database' => 'mysql',
+    'error_code' => 1045,
+]);
+
+Log::critical('System overload detected', [
+    'cpu_usage' => '98%',
+    'memory_usage' => '95%',
+]);
+
+// Use specific channels when needed
+Log::channel('sorane')->error('This goes only to Sorane');
+```
+
+#### Configuration
+
+Logging can be configured in your `config/sorane.php` file:
+
+```php
+'logging' => [
+    'enabled' => env('SORANE_LOGGING_ENABLED', false),
+    'queue' => env('SORANE_LOGGING_QUEUE', true),
+    'queue_name' => env('SORANE_LOGGING_QUEUE_NAME', 'default'),
+    'levels' => env('SORANE_LOGGING_LEVELS', 'notice,warning,error,critical,alert,emergency'),
+    'excluded_channels' => ['sorane'],
+],
+```
+
+Add to your `.env` file:
+```env
+SORANE_LOGGING_ENABLED=true
+```
+
+**Optional Configuration (with defaults):**
+```env
+# Optional: Use queues for logging (default: true - recommended for production)
+SORANE_LOGGING_QUEUE=true
+
+# Optional: Specify which log levels to send to Sorane (default: notice,warning,error,critical,alert,emergency)
+SORANE_LOGGING_LEVELS="notice,warning,error,critical,alert,emergency"
+
+# Optional: Custom queue name for log jobs (default: default)
+SORANE_LOGGING_QUEUE_NAME=default
+```
+
+All optional settings use sensible defaults, so you only need to set them if you want to customize the behavior.
+
+#### Available Log Levels
+
+Standard PSR-3 log levels are supported:
+
+- `emergency` - System is unusable
+- `alert` - Action must be taken immediately  
+- `critical` - Critical conditions
+- `error` - Error conditions
+- `warning` - Warning conditions
+- `notice` - Normal but significant condition
+- `info` - Informational messages
+- `debug` - Debug-level messages
+
+#### Testing Logging
+
+You can test your logging configuration using the included command:
+
+```bash
+php artisan sorane:test-logging
+```
+
+This will send various test logs to your Sorane dashboard and display your current configuration.
 
 ### Error Tracking & Website Analytics
 

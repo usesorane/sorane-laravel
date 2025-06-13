@@ -1,0 +1,79 @@
+<?php
+
+namespace Sorane\ErrorReporting\Logging;
+
+use Illuminate\Support\Facades\Log;
+use Monolog\Handler\AbstractProcessingHandler;
+use Monolog\LogRecord;
+use Sorane\ErrorReporting\Jobs\SendLogToSoraneJob;
+
+class SoraneLogHandler extends AbstractProcessingHandler
+{
+    public function __construct($level = 'DEBUG', bool $bubble = true)
+    {
+        parent::__construct($level, $bubble);
+    }
+
+    /**
+     * Writes the record down to the log of the implementing handler
+     */
+    protected function write(LogRecord $record): void
+    {
+        // Skip if logging is not enabled
+        if (! config('sorane.logging.enabled', false)) {
+            return;
+        }
+
+        // Check if the log level should be filtered
+        $allowedLevels = config('sorane.logging.levels');
+
+        // Convert string config to array if needed
+        if (is_string($allowedLevels)) {
+            $allowedLevels = explode(',', $allowedLevels);
+        }
+
+        // Default levels if not configured
+        if (empty($allowedLevels)) {
+            $allowedLevels = ['notice', 'warning', 'error', 'critical', 'alert', 'emergency'];
+        }
+
+        $allowedLevels = array_map('trim', $allowedLevels);
+
+        if (! in_array(strtolower($record->level->name), $allowedLevels)) {
+            return;
+        }
+
+        // Skip if the channel should be excluded
+        $excludedChannels = config('sorane.logging.excluded_channels', []);
+        $channelName = $record->channel ?? 'default';
+        if (in_array($channelName, $excludedChannels)) {
+            return;
+        }
+
+        // Prepare log data for Sorane API
+        $logData = [
+            'level' => strtolower($record->level->name),
+            'message' => $record->message,
+            'context' => $record->context,
+            'channel' => $channelName,
+            'timestamp' => $record->datetime->format('c'), // ISO 8601 format
+            'extra' => array_merge($record->extra, [
+                'environment' => config('app.env'),
+                'laravel_version' => app()->version(),
+                'php_version' => phpversion(),
+            ]),
+        ];
+
+        try {
+            // Send via queue by default, or synchronously if queue is disabled
+            if (config('sorane.logging.queue', true)) {
+                SendLogToSoraneJob::dispatch($logData);
+            } else {
+                SendLogToSoraneJob::dispatchSync($logData);
+            }
+        } catch (\Throwable $e) {
+            // Prevent infinite loops by using a different logger
+            Log::channel('single')->warning('Failed to queue log to Sorane: '.$e->getMessage());
+        }
+    }
+}

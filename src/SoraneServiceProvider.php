@@ -4,8 +4,10 @@ namespace Sorane\ErrorReporting;
 
 use Sorane\ErrorReporting\Analytics\Middleware\TrackPageVisit;
 use Sorane\ErrorReporting\Commands\SoraneEventTestCommand;
+use Sorane\ErrorReporting\Commands\SoraneLogTestCommand;
 use Sorane\ErrorReporting\Commands\SoraneTestCommand;
 use Sorane\ErrorReporting\Events\EventTracker;
+use Sorane\ErrorReporting\Logging\SoraneLogDriver;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -21,6 +23,11 @@ class SoraneServiceProvider extends PackageServiceProvider
         $this->app->singleton(EventTracker::class, function () {
             return new EventTracker;
         });
+
+        // Register custom log driver
+        $this->app['log']->extend('sorane', function ($app, $config) {
+            return (new SoraneLogDriver)($config);
+        });
     }
 
     public function configurePackage(Package $package): void
@@ -31,6 +38,7 @@ class SoraneServiceProvider extends PackageServiceProvider
             ->hasCommands([
                 SoraneTestCommand::class,
                 SoraneEventTestCommand::class,
+                SoraneLogTestCommand::class,
             ]);
     }
 }

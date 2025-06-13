@@ -1,6 +1,6 @@
 {
     "name": "usesorane/sorane-laravel",
-    "description": "This handles the error tracking for Sorane.io",
+    "description": "This package provides the integration for Sorane, a tool for monitoring your Laravel applications.",
     "keywords": [
         "usesorane",
         "laravel",

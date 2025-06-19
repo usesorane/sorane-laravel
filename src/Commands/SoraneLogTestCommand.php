@@ -25,6 +25,21 @@ class SoraneLogTestCommand extends Command
 
         $this->info('✅ Sorane logging is enabled');
 
+        // Check if the sorane channel is defined
+        if (! config('logging.channels.sorane')) {
+            $this->warn('⚠ Sorane logging channel is not defined in config/logging.php');
+            $this->info('Add the sorane channel configuration to logging.php channels array:');
+            $this->line("'sorane' => [");
+            $this->line("    'driver' => 'sorane',");
+            $this->line("    'level' => env('LOG_LEVEL', 'notice'),");
+            $this->line('],');
+            $this->info('Configuration check completed.');
+
+            return;
+        }
+
+        $this->info('✅ Sorane logging channel is defined');
+
         // Test Laravel logging integration
         $this->info('1. Testing Laravel Log integration...');
 
@@ -98,7 +113,7 @@ class SoraneLogTestCommand extends Command
         $this->line('');
         $this->line("'sorane' => [");
         $this->line("    'driver' => 'sorane',");
-        $this->line("    'level' => 'error',");
+        $this->line("    'level' => env('LOG_LEVEL', 'notice'),");
         $this->line('],');
         $this->line('');
         $this->line("'production' => [");

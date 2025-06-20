@@ -17,7 +17,7 @@ class SoraneLogTestCommand extends Command
 
         // Check if logging is enabled
         if (! config('sorane.logging.enabled', false)) {
-            $this->warn('⚠ Sorane logging is disabled. Enable it in config/sorane.php or set SORANE_LOGGING_ENABLED=true');
+            $this->warn('⚠ Sorane logging is disabled. Set SORANE_LOGGING_ENABLED=true in your .env file');
             $this->info('Configuration check completed.');
 
             return;

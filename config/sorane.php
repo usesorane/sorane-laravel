@@ -13,7 +13,8 @@ return [
         'queue_name' => env('SORANE_LOGGING_QUEUE_NAME', 'default'),
         'levels' => env('SORANE_LOGGING_LEVELS', 'notice,warning,error,critical,alert,emergency'),
         'excluded_channels' => [
-            'sorane', // Prevent infinite loops
+            // Add channels here that should never be sent to Sorane
+            // Note: The handler uses 'single' channel for its own error logging to prevent loops
         ],
     ],
     'website_analytics' => [

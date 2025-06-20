@@ -45,7 +45,6 @@ return [
         'enabled' => env('SORANE_LOGGING_ENABLED', false),
         'queue' => env('SORANE_LOGGING_QUEUE', true),
         'queue_name' => env('SORANE_LOGGING_QUEUE_NAME', 'default'),
-        'levels' => env('SORANE_LOGGING_LEVELS', 'notice,warning,error,critical,alert,emergency'),
         'excluded_channels' => [
             // Add channels here that should never be sent to Sorane
             // Note: The handler uses 'single' channel for its own error logging to prevent loops
@@ -261,13 +260,13 @@ Add the Sorane driver to your `config/logging.php`:
 'channels' => [
     'sorane' => [
         'driver' => 'sorane',
-        'level' => 'error',
+        'level' => 'error', // Control which levels are sent to Sorane
     ],
     
     // Recommended: Create a stack for production
     'production' => [
         'driver' => 'stack',
-        'channels' => ['single', 'sorane'],
+        'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['sorane']),
         'ignore_exceptions' => false,
     ],
 ],
@@ -308,7 +307,6 @@ Logging can be configured in your `config/sorane.php` file:
     'enabled' => env('SORANE_LOGGING_ENABLED', false),
     'queue' => env('SORANE_LOGGING_QUEUE', true),
     'queue_name' => env('SORANE_LOGGING_QUEUE_NAME', 'default'),
-    'levels' => env('SORANE_LOGGING_LEVELS', 'notice,warning,error,critical,alert,emergency'),
     'excluded_channels' => ['sorane'],
 ],
 ```
@@ -322,9 +320,6 @@ SORANE_LOGGING_ENABLED=true
 ```env
 # Optional: Use queues for logging (default: true - recommended for production)
 SORANE_LOGGING_QUEUE=true
-
-# Optional: Specify which log levels to send to Sorane (default: notice,warning,error,critical,alert,emergency)
-SORANE_LOGGING_LEVELS="notice,warning,error,critical,alert,emergency"
 
 # Optional: Custom queue name for log jobs (default: default)
 SORANE_LOGGING_QUEUE_NAME=default

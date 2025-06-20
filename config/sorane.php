@@ -11,7 +11,6 @@ return [
         'enabled' => env('SORANE_LOGGING_ENABLED', false),
         'queue' => env('SORANE_LOGGING_QUEUE', true),
         'queue_name' => env('SORANE_LOGGING_QUEUE_NAME', 'default'),
-        'levels' => env('SORANE_LOGGING_LEVELS', 'notice,warning,error,critical,alert,emergency'),
         'excluded_channels' => [
             // Add channels here that should never be sent to Sorane
             // Note: The handler uses 'single' channel for its own error logging to prevent loops

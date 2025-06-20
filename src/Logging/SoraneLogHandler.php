@@ -24,25 +24,6 @@ class SoraneLogHandler extends AbstractProcessingHandler
             return;
         }
 
-        // Check if the log level should be filtered
-        $allowedLevels = config('sorane.logging.levels');
-
-        // Convert string config to array if needed
-        if (is_string($allowedLevels)) {
-            $allowedLevels = explode(',', $allowedLevels);
-        }
-
-        // Default levels if not configured
-        if (empty($allowedLevels)) {
-            $allowedLevels = ['notice', 'warning', 'error', 'critical', 'alert', 'emergency'];
-        }
-
-        $allowedLevels = array_map('trim', $allowedLevels);
-
-        if (! in_array(strtolower($record->level->name), $allowedLevels)) {
-            return;
-        }
-
         // Skip if the channel should be excluded
         $excludedChannels = config('sorane.logging.excluded_channels', []);
         $channelName = $record->channel ?? 'default';

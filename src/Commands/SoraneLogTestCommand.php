@@ -118,7 +118,7 @@ class SoraneLogTestCommand extends Command
         $this->line('');
         $this->line("'production' => [");
         $this->line("    'driver' => 'stack',");
-        $this->line("    'channels' => ['single', 'sorane'],");
+        $this->line("    'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['sorane']),");
         $this->line("    'ignore_exceptions' => false,");
         $this->line('],');
         $this->line('');

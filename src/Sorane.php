@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Request;
 use Sorane\ErrorReporting\Analytics\FingerprintGenerator;
 use Sorane\ErrorReporting\Events\EventTracker;
 use Sorane\ErrorReporting\Jobs\SendEventToSoraneJob;
+use Sorane\ErrorReporting\Utilities\DataSanitizer;
 use Throwable;
 
 class Sorane
@@ -163,7 +164,7 @@ class Sorane
 
         $eventData = [
             'event_name' => $eventName,
-            'properties' => $properties,
+            'properties' => DataSanitizer::sanitizeForSerialization($properties),
             'user' => $user,
             'timestamp' => Carbon::now()->toISOString(),
             'url' => request()->fullUrl(),

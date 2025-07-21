@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Log;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\LogRecord;
 use Sorane\ErrorReporting\Jobs\SendLogToSoraneJob;
+use Sorane\ErrorReporting\Utilities\DataSanitizer;
 
 class SoraneLogHandler extends AbstractProcessingHandler
 {
@@ -35,14 +36,14 @@ class SoraneLogHandler extends AbstractProcessingHandler
         $logData = [
             'level' => strtolower($record->level->name),
             'message' => $record->message,
-            'context' => $record->context,
+            'context' => DataSanitizer::sanitizeForSerialization($record->context),
             'channel' => $channelName,
             'timestamp' => $record->datetime->format('c'), // ISO 8601 format
-            'extra' => array_merge($record->extra, [
+            'extra' => DataSanitizer::sanitizeForSerialization(array_merge($record->extra, [
                 'environment' => config('app.env'),
                 'laravel_version' => app()->version(),
                 'php_version' => phpversion(),
-            ]),
+            ])),
         ];
 
         try {

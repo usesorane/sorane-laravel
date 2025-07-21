@@ -97,8 +97,22 @@ class SoraneLogTestCommand extends Command
         ]);
         $this->info('   ✓ Context-rich log sent');
 
+        // Test closure serialization fix
+        $this->info('4. Testing closure serialization handling...');
+        $closure = function () {
+            return 'test';
+        };
+        Log::channel('sorane')->error('Error with closure in context', [
+            'closure_test' => $closure,
+            'nested_data' => [
+                'another_closure' => $closure,
+                'normal_data' => 'This should work fine',
+            ],
+        ]);
+        $this->info('   ✓ Log with closures sent (closures should be replaced with [Closure])');
+
         // Test multiple logs (simulating batch)
-        $this->info('4. Testing multiple log entries...');
+        $this->info('5. Testing multiple log entries...');
         Log::channel('sorane')->error('First error', ['sequence' => 1]);
         Log::channel('sorane')->warning('Second warning', ['sequence' => 2]);
         Log::channel('sorane')->critical('Third critical', ['sequence' => 3]);

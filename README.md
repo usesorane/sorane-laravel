@@ -364,6 +364,32 @@ composer test
 
 Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
 
+## Guard: Proactive Readiness Checks
+
+Run proactive best-practices checks to ensure your application stays production-ready:
+
+```bash
+php artisan sorane:guard
+```
+
+Optional JSON output for CI pipelines:
+
+```bash
+php artisan sorane:guard --json
+```
+
+What it checks (growing list):
+- app.debug is false
+- session.secure is true
+- session.same_site is set appropriately
+- APP_URL uses https
+- Trusted proxies configured when behind a proxy/CDN
+- Log level is not debug in production
+- Queue connection is not sync in production
+- Cache driver is not array/file in production
+- PHP OPcache enabled (performance hint)
+- Horizon recommended when using Redis in production
+
 ## Contributing
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.

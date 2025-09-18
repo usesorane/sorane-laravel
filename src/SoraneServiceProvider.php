@@ -4,6 +4,7 @@ namespace Sorane\ErrorReporting;
 
 use Sorane\ErrorReporting\Analytics\Middleware\TrackPageVisit;
 use Sorane\ErrorReporting\Commands\SoraneEventTestCommand;
+use Sorane\ErrorReporting\Commands\SoraneGuardCommand;
 use Sorane\ErrorReporting\Commands\SoraneLogTestCommand;
 use Sorane\ErrorReporting\Commands\SoraneTestCommand;
 use Sorane\ErrorReporting\Events\EventTracker;
@@ -39,6 +40,7 @@ class SoraneServiceProvider extends PackageServiceProvider
                 SoraneTestCommand::class,
                 SoraneEventTestCommand::class,
                 SoraneLogTestCommand::class,
+                SoraneGuardCommand::class,
             ]);
     }
 }

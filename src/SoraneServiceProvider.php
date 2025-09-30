@@ -2,22 +2,23 @@
 
 namespace Sorane\ErrorReporting;
 
+use Illuminate\Support\ServiceProvider;
 use Sorane\ErrorReporting\Analytics\Middleware\TrackPageVisit;
 use Sorane\ErrorReporting\Commands\SoraneEventTestCommand;
 use Sorane\ErrorReporting\Commands\SoraneLogTestCommand;
 use Sorane\ErrorReporting\Commands\SoraneTestCommand;
 use Sorane\ErrorReporting\Events\EventTracker;
 use Sorane\ErrorReporting\Logging\SoraneLogDriver;
-use Spatie\LaravelPackageTools\Package;
-use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class SoraneServiceProvider extends PackageServiceProvider
+class SoraneServiceProvider extends ServiceProvider
 {
-    public function bootingPackage(): void
+    public function register(): void
     {
-        if (config('sorane.website_analytics.enabled')) {
-            $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
-        }
+        // Merge package config
+        $this->mergeConfigFrom(
+            __DIR__.'/../config/sorane.php',
+            'sorane'
+        );
 
         // Register EventTracker as singleton
         $this->app->singleton(EventTracker::class, function () {
@@ -30,15 +31,25 @@ class SoraneServiceProvider extends PackageServiceProvider
         });
     }
 
-    public function configurePackage(Package $package): void
+    public function boot(): void
     {
-        $package
-            ->name('sorane-laravel')
-            ->hasConfigFile('sorane')
-            ->hasCommands([
+        // Publish config
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__.'/../config/sorane.php' => config_path('sorane.php'),
+            ], 'sorane-config');
+
+            // Register commands
+            $this->commands([
                 SoraneTestCommand::class,
                 SoraneEventTestCommand::class,
                 SoraneLogTestCommand::class,
             ]);
+        }
+
+        // Add middleware to web group
+        if (config('sorane.website_analytics.enabled')) {
+            $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
+        }
     }
 }

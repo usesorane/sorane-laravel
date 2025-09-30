@@ -2,6 +2,14 @@
 
 All notable changes to `sorane-laravel` will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- Refactored package to use native Laravel service provider instead of Spatie Laravel Package Tools
+- Removed `spatie/laravel-package-tools` dependency
+- Service provider now extends `Illuminate\Support\ServiceProvider` directly
+- All functionality preserved (config publishing, commands registration, middleware, singleton bindings, log driver)
+
 ## [v1.0.22]
 
 ### Fixed

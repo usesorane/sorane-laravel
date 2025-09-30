@@ -260,7 +260,7 @@ Add the Sorane driver to your `config/logging.php`:
 'channels' => [
     'sorane' => [
         'driver' => 'sorane',
-        'level' => 'error', // Control which levels are sent to Sorane
+        'level' => env('LOG_LEVEL', 'debug'), // Control which levels are sent to Sorane
     ],
     
     // Recommended: Create a stack for production

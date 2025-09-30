@@ -15,10 +15,50 @@ class OpsChecks
     public function run(): array
     {
         return [
+            $this->checkMailDriverSends(),
             $this->checkCacheDriverInProduction(),
             $this->checkOpcacheEnabled(),
             $this->checkQueueWorkerRecommendation(),
         ];
+    }
+
+    private function checkMailDriverSends(): CheckResult
+    {
+        $env = (string) $this->config->get('app.env');
+        $default = (string) ($this->config->get('mail.default', $this->config->get('mail.mailer', 'smtp')));
+
+        $nonSending = ['log', 'array'];
+        $isNonSending = in_array(strtolower($default), $nonSending, true);
+
+        // Handle wrapper mailers: failover/roundrobin — only warn if all underlying are non-sending
+        if (in_array(strtolower($default), ['failover', 'roundrobin'], true)) {
+            $wrapperKey = 'mail.mailers.'.strtolower($default).'.mailers';
+            $children = $this->config->get($wrapperKey, []);
+            if (is_array($children) && count($children) > 0) {
+                $allNonSending = true;
+                foreach ($children as $child) {
+                    $t = strtolower((string) $child);
+                    if (! in_array($t, $nonSending, true)) {
+                        $allNonSending = false;
+                        break;
+                    }
+                }
+                $isNonSending = $allNonSending;
+            }
+        }
+
+        $passed = ! ($env === 'production' && $isNonSending);
+
+        return new CheckResult(
+            id: 'mail.driver_sends',
+            description: 'Mail driver should send emails in production (avoid log/array)',
+            passed: $passed,
+            current: ['env' => $env, 'default' => $default],
+            expected: ['env' => 'production', 'default' => 'smtp/sendmail/ses/mailgun/postmark/etc.'],
+            severity: 'medium',
+            recommendation: 'Set MAIL_MAILER to a real transport (smtp, ses, mailgun, postmark, etc.) in production.',
+            helpUrl: 'https://laravel.com/docs/mail#configuration'
+        );
     }
 
     private function checkCacheDriverInProduction(): CheckResult

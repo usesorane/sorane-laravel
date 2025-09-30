@@ -7,8 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Sorane\ErrorReporting\Services\SoraneApiClient;
 
 class SendPageVisitToSoraneJob implements ShouldQueue
 {
@@ -24,44 +23,11 @@ class SendPageVisitToSoraneJob implements ShouldQueue
         $this->onQueue(config('sorane.website_analytics.queue', 'default'));
     }
 
-    public function handle(): void
+    public function handle(SoraneApiClient $client): void
     {
-        $apiKey = config('sorane.key');
-
-        if (empty($apiKey)) {
-            Log::warning('Sorane API key is not set. Visit data will not be sent.');
-
-            return;
-        }
-
         $payload = $this->filterPayload($this->visitData);
 
-        try {
-            $response = Http::withToken($apiKey)
-                ->withHeaders([
-                    'User-Agent' => 'Sorane-Analytics/1.0',
-                    'Content-Type' => 'application/json',
-                ])
-                ->timeout(5)
-                ->post('https://api.sorane.io/v1/analytics/visit', $payload);
-
-            // Enhanced error handling for new API response format
-            if ($response->successful()) {
-                $responseData = $response->json();
-                if (isset($responseData['success']) && $responseData['success'] === false) {
-                    Log::warning('Sorane analytics API error: '.($responseData['message'] ?? 'Unknown error'), [
-                        'error_code' => $responseData['error_code'] ?? null,
-                    ]);
-                }
-            } else {
-                Log::error('Sorane analytics API request failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Failed to send visit data to Sorane: '.$e->getMessage());
-        }
+        $client->sendPageVisit($payload);
     }
 
     protected function filterPayload(array $data): array

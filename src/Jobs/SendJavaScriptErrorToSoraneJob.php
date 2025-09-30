@@ -9,37 +9,45 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Sorane\ErrorReporting\Services\SoraneApiClient;
 
-class SendEventToSoraneJob implements ShouldQueue
+class SendJavaScriptErrorToSoraneJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public array $eventData;
+    public array $errorData;
 
-    public function __construct(array $eventData)
+    public function __construct(array $errorData)
     {
-        $this->eventData = $eventData;
+        $this->errorData = $errorData;
 
         // Optionally assign queue name from config
-        $this->onQueue(config('sorane.events.queue_name', 'default'));
+        $this->onQueue(config('sorane.javascript_errors.queue_name', 'default'));
     }
 
     public function handle(SoraneApiClient $client): void
     {
-        $payload = $this->filterPayload($this->eventData);
+        $payload = $this->filterPayload($this->errorData);
 
-        $client->sendEvent($payload);
+        $client->sendError($payload, 'javascript');
     }
 
     protected function filterPayload(array $data): array
     {
         $allowedKeys = [
-            'event_name',
-            'properties',
-            'user',
-            'timestamp',
+            'message',
+            'stack',
+            'type',
+            'filename',
+            'line',
+            'column',
+            'user_agent',
             'url',
-            'user_agent_hash',
-            'session_id_hash',
+            'timestamp',
+            'environment',
+            'user_id',
+            'session_id',
+            'breadcrumbs',
+            'context',
+            'browser_info',
         ];
 
         return collect($data)

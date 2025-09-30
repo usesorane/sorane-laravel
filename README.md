@@ -67,10 +67,93 @@ return [
         ],
         'request_filter' => null,
     ],
+    'javascript_errors' => [
+        'enabled' => env('SORANE_JAVASCRIPT_ERRORS_ENABLED', false),
+        'queue' => env('SORANE_JAVASCRIPT_ERRORS_QUEUE', true),
+        'queue_name' => env('SORANE_JAVASCRIPT_ERRORS_QUEUE_NAME', 'default'),
+        'sample_rate' => env('SORANE_JAVASCRIPT_ERRORS_SAMPLE_RATE', 1.0), // 1.0 = 100%, 0.1 = 10%
+        'ignored_errors' => [
+            // Browser quirks and unfixable issues
+            'ResizeObserver loop limit exceeded',
+            'ResizeObserver loop completed with undelivered notifications',
+
+            // Cross-origin errors (no useful information due to CORS)
+            'Script error.',
+            'Script error',
+
+            // Network errors (usually user connection issues, not bugs)
+            'Failed to fetch',
+            'NetworkError when attempting to fetch resource',
+            'Network request failed',
+            'Load failed',
+
+            // Webpack/Vite chunk loading (usually navigation/stale deployments)
+            'Loading chunk',
+            'ChunkLoadError',
+
+            // User-cancelled operations
+            'cancelled',
+            'canceled',
+            'The operation was aborted',
+            'AbortError',
+
+            // Browser extension interference
+            'Illegal invocation',
+
+            // Add your own patterns here as needed
+        ],
+        'capture_console_errors' => env('SORANE_JAVASCRIPT_CAPTURE_CONSOLE_ERRORS', false),
+        'max_breadcrumbs' => env('SORANE_JAVASCRIPT_MAX_BREADCRUMBS', 20),
+    ],
 ];
 ```
 
 ## Usage
+
+### JavaScript Error Tracking
+
+Sorane automatically captures JavaScript errors from your frontend application, providing full stack traces, browser context, and user interaction breadcrumbs to help you debug issues.
+
+#### Quick Start
+
+1. Enable JavaScript error tracking in your `.env`:
+
+```env
+SORANE_JAVASCRIPT_ERRORS_ENABLED=true
+```
+
+2. Add the tracking script to your layout file:
+
+```blade
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My App</title>
+</head>
+<body>
+    @yield('content')
+    
+    @soraneErrorTracking
+</body>
+</html>
+```
+
+That's it! JavaScript errors are now automatically tracked.
+
+#### Manual Error Capture
+
+You can also manually capture errors with custom context:
+
+```javascript
+try {
+  processPayment(amount);
+} catch (error) {
+  window.Sorane.captureError(error, {
+    payment_amount: amount,
+    user_type: 'premium'
+  });
+}
+```
 
 ### Event Tracking
 

@@ -33,4 +33,42 @@ return [
         ],
         'request_filter' => null,
     ],
+    'javascript_errors' => [
+        'enabled' => env('SORANE_JAVASCRIPT_ERRORS_ENABLED', false),
+        'queue' => env('SORANE_JAVASCRIPT_ERRORS_QUEUE', true),
+        'queue_name' => env('SORANE_JAVASCRIPT_ERRORS_QUEUE_NAME', 'default'),
+        'sample_rate' => env('SORANE_JAVASCRIPT_ERRORS_SAMPLE_RATE', 1.0), // 1.0 = 100%, 0.1 = 10%
+        'ignored_errors' => [
+            // Browser quirks and unfixable issues
+            'ResizeObserver loop limit exceeded',
+            'ResizeObserver loop completed with undelivered notifications',
+
+            // Cross-origin errors (no useful information due to CORS)
+            'Script error.',
+            'Script error',
+
+            // Network errors (usually user connection issues, not bugs)
+            'Failed to fetch',
+            'NetworkError when attempting to fetch resource',
+            'Network request failed',
+            'Load failed',
+
+            // Webpack/Vite chunk loading (usually navigation/stale deployments)
+            'Loading chunk',
+            'ChunkLoadError',
+
+            // User-cancelled operations
+            'cancelled',
+            'canceled',
+            'The operation was aborted',
+            'AbortError',
+
+            // Browser extension interference
+            'Illegal invocation',
+
+            // Add your own patterns here as needed
+        ],
+        'capture_console_errors' => env('SORANE_JAVASCRIPT_CAPTURE_CONSOLE_ERRORS', false),
+        'max_breadcrumbs' => env('SORANE_JAVASCRIPT_MAX_BREADCRUMBS', 20),
+    ],
 ];

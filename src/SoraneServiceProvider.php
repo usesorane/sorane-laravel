@@ -5,6 +5,7 @@ namespace Sorane\ErrorReporting;
 use Illuminate\Support\ServiceProvider;
 use Sorane\ErrorReporting\Analytics\Middleware\TrackPageVisit;
 use Sorane\ErrorReporting\Commands\SoraneEventTestCommand;
+use Sorane\ErrorReporting\Commands\SoraneJavaScriptErrorTestCommand;
 use Sorane\ErrorReporting\Commands\SoraneLogTestCommand;
 use Sorane\ErrorReporting\Commands\SoraneTestCommand;
 use Sorane\ErrorReporting\Events\EventTracker;
@@ -44,12 +45,39 @@ class SoraneServiceProvider extends ServiceProvider
                 SoraneTestCommand::class,
                 SoraneEventTestCommand::class,
                 SoraneLogTestCommand::class,
+                SoraneJavaScriptErrorTestCommand::class,
             ]);
         }
+
+        // Load package views
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'sorane');
 
         // Add middleware to web group
         if (config('sorane.website_analytics.enabled')) {
             $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
         }
+
+        // Register JavaScript error tracking route
+        if (config('sorane.javascript_errors.enabled')) {
+            $this->registerJavaScriptErrorRoute();
+        }
+
+        // Register Blade directive for error tracking script
+        $this->registerBladeDirectives();
+    }
+
+    protected function registerJavaScriptErrorRoute(): void
+    {
+        $this->app['router']
+            ->post('sorane/js-errors', [\Sorane\ErrorReporting\Http\Controllers\JavaScriptErrorController::class, 'store'])
+            ->middleware(['web'])
+            ->name('sorane.javascript-errors.store');
+    }
+
+    protected function registerBladeDirectives(): void
+    {
+        \Illuminate\Support\Facades\Blade::directive('soraneErrorTracking', function () {
+            return "<?php echo view('sorane::error-tracker')->render(); ?>";
+        });
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\ErrorReporting\Services;
+namespace Sorane\Laravel\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -21,8 +21,6 @@ class SoraneApiClient
     public function sendError(array $errorData, string $type): bool
     {
         if (empty($this->apiKey)) {
-            Log::warning('Sorane API key is not set. Error data will not be sent.');
-
             return false;
         }
 
@@ -70,8 +68,6 @@ class SoraneApiClient
     public function sendEvent(array $eventData): bool
     {
         if (empty($this->apiKey)) {
-            Log::warning('Sorane API key is not set. Event data will not be sent.');
-
             return false;
         }
 

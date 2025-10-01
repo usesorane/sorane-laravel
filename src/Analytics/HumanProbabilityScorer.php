@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\ErrorReporting\Analytics;
+namespace Sorane\Laravel\Analytics;
 
 use Illuminate\Http\Request;
 

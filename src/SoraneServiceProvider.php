@@ -1,15 +1,15 @@
 <?php
 
-namespace Sorane\ErrorReporting;
+namespace Sorane\Laravel;
 
 use Illuminate\Support\ServiceProvider;
-use Sorane\ErrorReporting\Analytics\Middleware\TrackPageVisit;
-use Sorane\ErrorReporting\Commands\SoraneEventTestCommand;
-use Sorane\ErrorReporting\Commands\SoraneJavaScriptErrorTestCommand;
-use Sorane\ErrorReporting\Commands\SoraneLogTestCommand;
-use Sorane\ErrorReporting\Commands\SoraneTestCommand;
-use Sorane\ErrorReporting\Events\EventTracker;
-use Sorane\ErrorReporting\Logging\SoraneLogDriver;
+use Sorane\Laravel\Analytics\Middleware\TrackPageVisit;
+use Sorane\Laravel\Commands\SoraneEventTestCommand;
+use Sorane\Laravel\Commands\SoraneJavaScriptErrorTestCommand;
+use Sorane\Laravel\Commands\SoraneLogTestCommand;
+use Sorane\Laravel\Commands\SoraneTestCommand;
+use Sorane\Laravel\Events\EventTracker;
+use Sorane\Laravel\Logging\SoraneLogDriver;
 
 class SoraneServiceProvider extends ServiceProvider
 {
@@ -69,7 +69,7 @@ class SoraneServiceProvider extends ServiceProvider
     protected function registerJavaScriptErrorRoute(): void
     {
         $this->app['router']
-            ->post('sorane/js-errors', [\Sorane\ErrorReporting\Http\Controllers\JavaScriptErrorController::class, 'store'])
+            ->post('sorane/js-errors', [\Sorane\Laravel\Http\Controllers\JavaScriptErrorController::class, 'store'])
             ->middleware(['web'])
             ->name('sorane.javascript-errors.store');
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\ErrorReporting\Analytics;
+namespace Sorane\Laravel\Analytics;
 
 use Illuminate\Http\Request;
 
@@ -23,11 +23,11 @@ class FingerprintGenerator
     /**
      * Generate a user agent hash
      */
-    public static function generateUserAgentHash(?Request $request = null): ?string
+    public static function generateUserAgentHash(?Request $request = null): string
     {
         $request = $request ?: request();
         $userAgent = $request->userAgent();
 
-        return $userAgent ? hash('sha256', $userAgent) : null;
+        return $userAgent ? hash('sha256', $userAgent) : '';
     }
 }

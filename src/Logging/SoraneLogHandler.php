@@ -1,12 +1,12 @@
 <?php
 
-namespace Sorane\ErrorReporting\Logging;
+namespace Sorane\Laravel\Logging;
 
 use Illuminate\Support\Facades\Log;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\LogRecord;
-use Sorane\ErrorReporting\Jobs\SendLogToSoraneJob;
-use Sorane\ErrorReporting\Utilities\DataSanitizer;
+use Sorane\Laravel\Jobs\SendLogToSoraneJob;
+use Sorane\Laravel\Utilities\DataSanitizer;
 
 class SoraneLogHandler extends AbstractProcessingHandler
 {

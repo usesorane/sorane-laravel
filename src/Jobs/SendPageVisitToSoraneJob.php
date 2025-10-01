@@ -1,13 +1,13 @@
 <?php
 
-namespace Sorane\ErrorReporting\Jobs;
+namespace Sorane\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Sorane\ErrorReporting\Services\SoraneApiClient;
+use Sorane\Laravel\Services\SoraneApiClient;
 
 class SendPageVisitToSoraneJob implements ShouldQueue
 {

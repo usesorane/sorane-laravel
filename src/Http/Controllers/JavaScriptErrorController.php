@@ -1,13 +1,13 @@
 <?php
 
-namespace Sorane\ErrorReporting\Http\Controllers;
+namespace Sorane\Laravel\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
-use Sorane\ErrorReporting\Jobs\SendJavaScriptErrorToSoraneJob;
-use Sorane\ErrorReporting\Utilities\DataSanitizer;
+use Sorane\Laravel\Jobs\SendJavaScriptErrorToSoraneJob;
+use Sorane\Laravel\Utilities\DataSanitizer;
 
 class JavaScriptErrorController extends Controller
 {

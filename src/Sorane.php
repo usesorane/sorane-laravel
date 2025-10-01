@@ -1,16 +1,16 @@
 <?php
 
-namespace Sorane\ErrorReporting;
+namespace Sorane\Laravel;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
-use Sorane\ErrorReporting\Analytics\FingerprintGenerator;
-use Sorane\ErrorReporting\Events\EventTracker;
-use Sorane\ErrorReporting\Jobs\SendEventToSoraneJob;
-use Sorane\ErrorReporting\Utilities\DataSanitizer;
+use Sorane\Laravel\Analytics\FingerprintGenerator;
+use Sorane\Laravel\Events\EventTracker;
+use Sorane\Laravel\Jobs\SendEventToSoraneJob;
+use Sorane\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
 class Sorane

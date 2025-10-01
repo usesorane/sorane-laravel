@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\ErrorReporting\Utilities;
+namespace Sorane\Laravel\Utilities;
 
 class DataSanitizer
 {

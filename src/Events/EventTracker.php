@@ -1,9 +1,9 @@
 <?php
 
-namespace Sorane\ErrorReporting\Events;
+namespace Sorane\Laravel\Events;
 
 use InvalidArgumentException;
-use Sorane\ErrorReporting\Facades\Sorane;
+use Sorane\Laravel\Facades\Sorane;
 
 class EventTracker
 {

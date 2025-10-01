@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\ErrorReporting\Analytics\Contracts;
+namespace Sorane\Laravel\Analytics\Contracts;
 
 use Illuminate\Http\Request;
 

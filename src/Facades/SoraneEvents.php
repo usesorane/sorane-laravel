@@ -1,11 +1,11 @@
 <?php
 
-namespace Sorane\ErrorReporting\Facades;
+namespace Sorane\Laravel\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Sorane\ErrorReporting\Events\EventTracker
+ * @see \Sorane\Laravel\Events\EventTracker
  *
  * @method static bool validateEventName(string $eventName)
  * @method static void ensureValidEventName(string $eventName)
@@ -21,6 +21,6 @@ class SoraneEvents extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return \Sorane\ErrorReporting\Events\EventTracker::class;
+        return \Sorane\Laravel\Events\EventTracker::class;
     }
 }

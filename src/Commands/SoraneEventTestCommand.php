@@ -1,11 +1,11 @@
 <?php
 
-namespace Sorane\ErrorReporting\Commands;
+namespace Sorane\Laravel\Commands;
 
 use Illuminate\Console\Command;
-use Sorane\ErrorReporting\Events\EventTracker;
-use Sorane\ErrorReporting\Facades\Sorane;
-use Sorane\ErrorReporting\Facades\SoraneEvents;
+use Sorane\Laravel\Events\EventTracker;
+use Sorane\Laravel\Facades\Sorane;
+use Sorane\Laravel\Facades\SoraneEvents;
 
 class SoraneEventTestCommand extends Command
 {

@@ -1,20 +1,24 @@
 <?php
 
-namespace Sorane\ErrorReporting\Analytics\Middleware;
+namespace Sorane\Laravel\Analytics\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Jaybizzle\CrawlerDetect\CrawlerDetect;
-use Sorane\ErrorReporting\Analytics\Contracts\RequestFilter;
-use Sorane\ErrorReporting\Analytics\HumanProbabilityScorer;
-use Sorane\ErrorReporting\Analytics\VisitDataCollector;
-use Sorane\ErrorReporting\Jobs\SendPageVisitToSoraneJob;
+use Sorane\Laravel\Analytics\Contracts\RequestFilter;
+use Sorane\Laravel\Analytics\HumanProbabilityScorer;
+use Sorane\Laravel\Analytics\VisitDataCollector;
+use Sorane\Laravel\Jobs\SendPageVisitToSoraneJob;
 
 class TrackPageVisit
 {
     public function handle(Request $request, Closure $next)
     {
+        if (! config('sorane.website_analytics.enabled', false)) {
+            return $next($request);
+        }
+
         // Skip if the request does not have a user agent
         if (! $request->userAgent()) {
             return $next($request);
@@ -86,8 +90,7 @@ class TrackPageVisit
         ];
 
         foreach ($extraBotUserAgents as $botUserAgent) {
-            if ($crawlerDetect->isCrawler($botUserAgent)) {
-                // Don't track crawlers
+            if (stripos($userAgent, $botUserAgent) !== false) {
                 return $next($request);
             }
         }

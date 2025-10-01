@@ -35,13 +35,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Sorane\\ErrorReporting\\": "src/",
-            "Sorane\\ErrorReporting\\Database\\Factories\\": "database/factories/"
+            "Sorane\\Laravel\\": "src/",
+            "Sorane\\Laravel\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Sorane\\ErrorReporting\\Tests\\": "tests/",
+            "Sorane\\Laravel\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -73,10 +73,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Sorane\\ErrorReporting\\SoraneServiceProvider"
+                "Sorane\\Laravel\\SoraneServiceProvider"
             ],
             "aliases": {
-                "Sorane": "Sorane\\ErrorReporting\\Facades\\Sorane"
+                "Sorane": "Sorane\\Laravel\\Facades\\Sorane"
             }
         }
     },

@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\ErrorReporting\Analytics;
+namespace Sorane\Laravel\Analytics;
 
 use Illuminate\Http\Request;
 
@@ -45,19 +45,19 @@ class VisitDataCollector
 
         $ua = strtolower($userAgent);
 
+        // Check for tablets first (more specific)
+        if (
+            preg_match('/(ipad|tablet|playbook|silk)/i', $ua) ||
+            (preg_match('/android/i', $ua) && ! preg_match('/mobile/i', $ua))
+        ) {
+            return 'tablet';
+        }
+
         // Check for mobile devices with more comprehensive patterns
         if (preg_match('/(android|iphone|ipod|blackberry|iemobile|opera mini|opera mobi|webos|mobile safari|samsung.+mobile)/i', $ua) ||
             (str_contains($ua, 'mobile') && ! str_contains($ua, 'ipad'))
         ) {
             return 'mobile';
-        }
-
-        // Check for tablets with better detection
-        if (
-            preg_match('/(ipad|tablet|playbook|silk|android(?!.*mobile))/i', $ua) ||
-            str_contains($ua, 'tablet')
-        ) {
-            return 'tablet';
         }
 
         // Check for gaming consoles
@@ -99,13 +99,9 @@ class VisitDataCollector
 
     protected static function resolveCountryFromIp(?string $ip): ?string
     {
-        return null; // We don't do this yet.
-
-        if (! $ip) {
-            return null;
-        }
-
-        return null; // Code goed here to resolve the country from the IP address.
+        // Country resolution not implemented yet
+        // Future implementation would go here to resolve country from IP address
+        return null;
     }
 
     protected static function generateSessionIdHash(Request $request): string

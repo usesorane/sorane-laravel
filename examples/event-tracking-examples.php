@@ -7,9 +7,9 @@
  * in a Laravel application.
  */
 
-use Sorane\ErrorReporting\Events\EventTracker;
-use Sorane\ErrorReporting\Facades\Sorane;
-use Sorane\ErrorReporting\Facades\SoraneEvents;
+use Sorane\Laravel\Events\EventTracker;
+use Sorane\Laravel\Facades\Sorane;
+use Sorane\Laravel\Facades\SoraneEvents;
 
 // =====================================================
 // Basic Event Tracking

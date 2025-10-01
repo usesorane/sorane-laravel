@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Analytics\Middleware;
 
 use Closure;
@@ -31,7 +33,7 @@ class TrackPageVisit
 
         // Excluded paths
         $excludedPaths = config('sorane.website_analytics.excluded_paths', []);
-        $firstSegment = explode('/', ltrim($request->path(), '/'))[0];
+        $firstSegment = explode('/', mb_ltrim($request->path(), '/'))[0];
 
         if (in_array($firstSegment, $excludedPaths, true)) {
             return $next($request);
@@ -53,12 +55,12 @@ class TrackPageVisit
         $userAgent = $request->userAgent();
 
         // Check for extremely short user agents
-        if (strlen($userAgent) < 10) {
+        if (mb_strlen($userAgent) < 10) {
             return $next($request);
         }
 
         // Check for excessively long user agents
-        if (strlen($userAgent) > 1000) {
+        if (mb_strlen($userAgent) > 1000) {
             return $next($request);
         }
 
@@ -70,7 +72,7 @@ class TrackPageVisit
         ];
 
         foreach ($suspiciousPatterns as $pattern) {
-            if (stripos($userAgent, $pattern) !== false) {
+            if (mb_stripos($userAgent, $pattern) !== false) {
                 return $next($request);
             }
         }
@@ -90,7 +92,7 @@ class TrackPageVisit
         ];
 
         foreach ($extraBotUserAgents as $botUserAgent) {
-            if (stripos($userAgent, $botUserAgent) !== false) {
+            if (mb_stripos($userAgent, $botUserAgent) !== false) {
                 return $next($request);
             }
         }
@@ -121,7 +123,13 @@ class TrackPageVisit
         // Only dispatch the job if not sent recently
         if (! Cache::has($cacheKey)) {
             Cache::put($cacheKey, true, now()->addSeconds(30));
-            SendPageVisitToSoraneJob::dispatch($visitData);
+
+            // Dispatch job to send visit data
+            if (config('sorane.website_analytics.queue', true)) {
+                SendPageVisitToSoraneJob::dispatch($visitData);
+            } else {
+                SendPageVisitToSoraneJob::dispatchSync($visitData);
+            }
         }
 
         return $next($request);

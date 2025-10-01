@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Sorane\Laravel\Utilities\DataSanitizer;
 
 test('it sanitizes arrays correctly', function (): void {

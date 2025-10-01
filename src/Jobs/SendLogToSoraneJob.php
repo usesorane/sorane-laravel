@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
@@ -13,12 +15,9 @@ class SendLogToSoraneJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public array $logData;
-
-    public function __construct(array $logData)
-    {
-        $this->logData = $logData;
-
+    public function __construct(
+        protected array $logData
+    ) {
         // Optionally assign queue name from config
         $this->onQueue(config('sorane.logging.queue_name', 'default'));
     }
@@ -28,6 +27,11 @@ class SendLogToSoraneJob implements ShouldQueue
         $payload = $this->filterPayload($this->logData);
 
         $client->sendError($payload, 'log');
+    }
+
+    public function getLogData(): array
+    {
+        return $this->logData;
     }
 
     protected function filterPayload(array $data): array

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Logging;
 
 use Illuminate\Support\Facades\Log;
@@ -7,6 +9,7 @@ use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\LogRecord;
 use Sorane\Laravel\Jobs\SendLogToSoraneJob;
 use Sorane\Laravel\Utilities\DataSanitizer;
+use Throwable;
 
 class SoraneLogHandler extends AbstractProcessingHandler
 {
@@ -34,7 +37,7 @@ class SoraneLogHandler extends AbstractProcessingHandler
 
         // Prepare log data for Sorane API
         $logData = [
-            'level' => strtolower($record->level->name),
+            'level' => mb_strtolower($record->level->name),
             'message' => $record->message,
             'context' => DataSanitizer::sanitizeForSerialization($record->context),
             'channel' => $channelName,
@@ -53,7 +56,7 @@ class SoraneLogHandler extends AbstractProcessingHandler
             } else {
                 SendLogToSoraneJob::dispatchSync($logData);
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Prevent infinite loops by using a different logger
             Log::channel('single')->warning('Failed to queue log to Sorane: '.$e->getMessage());
         }

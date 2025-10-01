@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Sorane\Laravel\SoraneServiceProvider;
 use Sorane\Laravel\Tests\TestCase;
 

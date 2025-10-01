@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Sorane\Laravel\Jobs\SendPageVisitToSoraneJob;
@@ -95,8 +97,8 @@ test('it includes human probability score', function (): void {
     ])->get('/');
 
     Bus::assertDispatched(SendPageVisitToSoraneJob::class, function ($job): bool {
-        return isset($job->visitData['human_probability_score'])
-            && isset($job->visitData['human_probability_reasons']);
+        return isset($job->getVisitData()['human_probability_score'])
+            && isset($job->getVisitData()['human_probability_reasons']);
     });
 });
 

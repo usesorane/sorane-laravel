@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 use Sorane\Laravel\Analytics\VisitDataCollector;
 
 test('it collects basic visit data', function (): void {
-    $request = \Illuminate\Http\Request::create('https://example.com/test-page?utm_source=google', 'GET');
+    $request = Illuminate\Http\Request::create('https://example.com/test-page?utm_source=google', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124');
     $request->headers->set('Referer', 'https://google.com');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
@@ -36,7 +38,7 @@ test('it detects mobile devices correctly', function (): void {
     ];
 
     foreach ($userAgents as $ua) {
-        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request = Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('User-Agent', $ua);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -53,7 +55,7 @@ test('it detects tablets correctly', function (): void {
     ];
 
     foreach ($userAgents as $ua) {
-        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request = Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('User-Agent', $ua);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -70,7 +72,7 @@ test('it detects desktop devices correctly', function (): void {
     ];
 
     foreach ($userAgents as $ua) {
-        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request = Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('User-Agent', $ua);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -89,7 +91,7 @@ test('it detects browsers correctly', function (): void {
     ];
 
     foreach ($tests as $ua => $expectedBrowser) {
-        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request = Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('User-Agent', $ua);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -100,7 +102,7 @@ test('it detects browsers correctly', function (): void {
 });
 
 test('it collects utm parameters', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET', [
+    $request = Illuminate\Http\Request::create('/', 'GET', [
         'utm_source' => 'google',
         'utm_medium' => 'cpc',
         'utm_campaign' => 'summer_sale',
@@ -120,7 +122,7 @@ test('it collects utm parameters', function (): void {
 });
 
 test('it includes timestamp in ISO format', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Test Browser');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -130,7 +132,7 @@ test('it includes timestamp in ISO format', function (): void {
 });
 
 test('it hashes user agent', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Test Browser');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 

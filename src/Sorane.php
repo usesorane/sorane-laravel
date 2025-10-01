@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Sorane\Laravel\Analytics\FingerprintGenerator;
 use Sorane\Laravel\Events\EventTracker;
 use Sorane\Laravel\Jobs\SendEventToSoraneJob;
+use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
@@ -17,6 +19,10 @@ class Sorane
 {
     public function report(Throwable $exception): void
     {
+        if (! config('sorane.error_reporting.enabled', true)) {
+            return;
+        }
+
         $request = Request::instance();
         $user = Auth::user();
 
@@ -60,7 +66,8 @@ class Sorane
         $context = null;
         $highlightLine = null;
 
-        if (is_readable($file) && filesize($file) < 1024 * 1024) { // Limit to 1MB
+        $maxFileSize = config('sorane.error_reporting.max_file_size', 1048576);
+        if (is_readable($file) && filesize($file) < $maxFileSize) {
             $lines = file($file);
             if (is_array($lines)) {
                 $startLine = max(0, $line - 6); // 5 lines before the error line
@@ -87,10 +94,10 @@ class Sorane
 
         // Trace
         $trace = $exception->getTraceAsString();
-        $maxTraceLength = 5000; // for example, limiting trace length
+        $maxTraceLength = config('sorane.error_reporting.max_trace_length', 5000);
 
-        if (strlen($trace) > $maxTraceLength) {
-            $trace = substr($trace, 0, $maxTraceLength).'... (truncated)';
+        if (mb_strlen($trace) > $maxTraceLength) {
+            $trace = mb_substr($trace, 0, $maxTraceLength).'... (truncated)';
         }
 
         $time = Carbon::now()->toDateTimeString();
@@ -120,30 +127,9 @@ class Sorane
         ];
 
         try {
-            $response = Http::withToken(config('sorane.key'))
-                ->withHeaders([
-                    'User-Agent' => 'Sorane-Error-Reporter/1.0',
-                    'Content-Type' => 'application/json',
-                ])
-                ->timeout(5)
-                ->post('https://api.sorane.io/v1/report', $data);
-
-            // Enhanced error handling for new API response format
-            if ($response->successful()) {
-                $responseData = $response->json();
-                if (isset($responseData['success']) && $responseData['success'] === false) {
-                    Log::warning('Sorane API returned error: '.($responseData['message'] ?? 'Unknown error'), [
-                        'error_code' => $responseData['error_code'] ?? null,
-                        'errors' => $responseData['errors'] ?? null,
-                    ]);
-                }
-            } else {
-                Log::error('Sorane API request failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-            }
-        } catch (\Throwable $e) {
+            $client = app(SoraneApiClient::class);
+            $client->sendErrorReport($data);
+        } catch (Throwable $e) {
             // Log the failure but don't rethrow to avoid infinite loops
             Log::warning('Failed to send error report to Sorane: '.$e->getMessage());
         }
@@ -191,8 +177,8 @@ class Sorane
         // Find the first line with actual content and determine the minimum indentation
         $minIndent = null;
         foreach ($trimmedLines as $line) {
-            if (trim($line) !== '') { // Skip empty lines
-                $indent = strlen($line) - strlen(ltrim($line));
+            if (mb_trim($line) !== '') { // Skip empty lines
+                $indent = mb_strlen($line) - mb_strlen(mb_ltrim($line));
                 if ($minIndent === null || $indent < $minIndent) {
                     $minIndent = $indent;
                 }
@@ -202,8 +188,8 @@ class Sorane
         // Remove the minimum indentation from all lines
         if ($minIndent > 0) {
             foreach ($trimmedLines as &$line) {
-                if (trim($line) !== '') {
-                    $line = substr($line, $minIndent);
+                if (mb_trim($line) !== '') {
+                    $line = mb_substr($line, $minIndent);
                 }
             }
         }

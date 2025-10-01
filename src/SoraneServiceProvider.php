@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel;
 
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 use Sorane\Laravel\Analytics\Middleware\TrackPageVisit;
 use Sorane\Laravel\Commands\SoraneEventTestCommand;
 use Sorane\Laravel\Commands\SoraneJavaScriptErrorTestCommand;
@@ -34,6 +37,9 @@ class SoraneServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Validate API key if any feature is enabled
+        $this->validateApiKey();
+
         // Publish config
         if ($this->app->runningInConsole()) {
             $this->publishes([
@@ -69,8 +75,8 @@ class SoraneServiceProvider extends ServiceProvider
     protected function registerJavaScriptErrorRoute(): void
     {
         $this->app['router']
-            ->post('sorane/js-errors', [\Sorane\Laravel\Http\Controllers\JavaScriptErrorController::class, 'store'])
-            ->middleware(['web'])
+            ->post('sorane/js-errors', [Http\Controllers\JavaScriptErrorController::class, 'store'])
+            ->middleware(['web', 'throttle:60,1'])
             ->name('sorane.javascript-errors.store');
     }
 
@@ -79,5 +85,20 @@ class SoraneServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Blade::directive('soraneErrorTracking', function () {
             return "<?php echo view('sorane::error-tracker')->render(); ?>";
         });
+    }
+
+    protected function validateApiKey(): void
+    {
+        $featuresEnabled = config('sorane.error_reporting.enabled', true)
+            || config('sorane.events.enabled', true)
+            || config('sorane.website_analytics.enabled', false)
+            || config('sorane.javascript_errors.enabled', false)
+            || config('sorane.logging.enabled', false);
+
+        if ($featuresEnabled && empty(config('sorane.key'))) {
+            throw new RuntimeException(
+                'Sorane API key is not configured. Please set SORANE_KEY in your .env file or disable Sorane features.'
+            );
+        }
     }
 }

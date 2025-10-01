@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Commands;
 
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -63,7 +66,7 @@ class SoraneLogTestCommand extends Command
                     'component' => 'testing',
                 ]);
                 $this->info('   ✓ Stack log sent');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->warn('   ⚠ Stack logging failed: '.$e->getMessage());
             }
         }

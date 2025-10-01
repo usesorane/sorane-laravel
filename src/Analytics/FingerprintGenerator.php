@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Analytics;
 
 use Illuminate\Http\Request;
@@ -15,7 +17,7 @@ class FingerprintGenerator
         $request = $request ?: request();
 
         // Rotate daily, non-persistent session hash
-        $raw = $request->ip().'|'.substr($request->userAgent() ?? '', 0, 100).'|'.now()->format('Y-m-d');
+        $raw = $request->ip().'|'.mb_substr($request->userAgent() ?? '', 0, 100).'|'.now()->format('Y-m-d');
 
         return hash('sha256', $raw);
     }

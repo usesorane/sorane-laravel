@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Facades;
 
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,11 +15,6 @@ use Throwable;
  */
 class Sorane extends Facade
 {
-    protected static function getFacadeAccessor(): string
-    {
-        return \Sorane\Laravel\Sorane::class;
-    }
-
     public static function handles(Exceptions $exceptions): void
     {
         $exceptions->reportable(static function (Throwable $exception): \Sorane\Laravel\Sorane {
@@ -27,5 +24,10 @@ class Sorane extends Facade
 
             return $sorane;
         });
+    }
+
+    protected static function getFacadeAccessor(): string
+    {
+        return \Sorane\Laravel\Sorane::class;
     }
 }

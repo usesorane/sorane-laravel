@@ -1,6 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Utilities;
+
+use Closure;
+use Throwable;
 
 class DataSanitizer
 {
@@ -19,7 +24,7 @@ class DataSanitizer
         }
 
         if (is_object($data)) {
-            if ($data instanceof \Closure) {
+            if ($data instanceof Closure) {
                 return '[Closure]';
             }
 
@@ -41,7 +46,7 @@ class DataSanitizer
                 }
 
                 return '[Object: '.get_class($data).']';
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 return '[Object: '.get_class($data).' - serialization failed]';
             }
         }

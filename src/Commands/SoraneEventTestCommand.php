@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Commands;
 
+use Exception;
 use Illuminate\Console\Command;
+use InvalidArgumentException;
 use Sorane\Laravel\Events\EventTracker;
 use Sorane\Laravel\Facades\Sorane;
 use Sorane\Laravel\Facades\SoraneEvents;
@@ -29,10 +33,10 @@ class SoraneEventTestCommand extends Command
             $this->info('   ⚠ Testing invalid event name (this will show validation error)...');
             try {
                 SoraneEvents::custom('Invalid Event Name!', []);
-            } catch (\InvalidArgumentException $e) {
+            } catch (InvalidArgumentException $e) {
                 $this->warn('   Expected validation error: '.$e->getMessage());
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('Validation test failed: '.$e->getMessage());
         }
 

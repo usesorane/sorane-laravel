@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Events;
 
 use InvalidArgumentException;
@@ -46,7 +48,7 @@ class EventTracker
     public static function validateEventName(string $eventName): bool
     {
         // Check length
-        if (strlen($eventName) < 3 || strlen($eventName) > 50) {
+        if (mb_strlen($eventName) < 3 || mb_strlen($eventName) > 50) {
             return false;
         }
 

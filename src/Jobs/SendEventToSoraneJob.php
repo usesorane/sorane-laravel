@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
@@ -13,12 +15,9 @@ class SendEventToSoraneJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public array $eventData;
-
-    public function __construct(array $eventData)
-    {
-        $this->eventData = $eventData;
-
+    public function __construct(
+        protected array $eventData
+    ) {
         // Optionally assign queue name from config
         $this->onQueue(config('sorane.events.queue_name', 'default'));
     }
@@ -28,6 +27,11 @@ class SendEventToSoraneJob implements ShouldQueue
         $payload = $this->filterPayload($this->eventData);
 
         $client->sendEvent($payload);
+    }
+
+    public function getEventData(): array
+    {
+        return $this->eventData;
     }
 
     protected function filterPayload(array $data): array

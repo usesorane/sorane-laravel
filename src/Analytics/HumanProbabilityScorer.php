@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Analytics;
 
 use Illuminate\Http\Request;
@@ -108,7 +110,7 @@ class HumanProbabilityScorer
         }
 
         // Check length - too short or too long is suspicious
-        $length = strlen($userAgent);
+        $length = mb_strlen($userAgent);
         if ($length < 30) {
             $this->reasons[] = 'User agent suspiciously short';
             $score -= self::DEFAULT_WEIGHTS['user_agent_length'];
@@ -130,7 +132,7 @@ class HumanProbabilityScorer
         ];
 
         foreach ($suspiciousPatterns as $pattern) {
-            if (stripos($userAgent, $pattern) !== false) {
+            if (mb_stripos($userAgent, $pattern) !== false) {
                 $this->reasons[] = "User agent contains suspicious term: {$pattern}";
                 $score += self::DEFAULT_WEIGHTS['user_agent_suspicious'];
                 break;
@@ -179,7 +181,7 @@ class HumanProbabilityScorer
         ];
 
         foreach ($commonReferrers as $domain) {
-            if (stripos($referrer, $domain) !== false) {
+            if (mb_stripos($referrer, $domain) !== false) {
                 $this->reasons[] = "Referrer is from common source ({$domain})";
                 $score += 5;
                 break;
@@ -271,12 +273,15 @@ class HumanProbabilityScorer
     {
         if ($score >= self::DEFAULT_THRESHOLDS['likely_human']) {
             return 'likely_human';
-        } elseif ($score >= self::DEFAULT_THRESHOLDS['possibly_human']) {
-            return 'possibly_human';
-        } elseif ($score >= self::DEFAULT_THRESHOLDS['likely_bot']) {
-            return 'probably_bot';
-        } else {
-            return 'definitely_bot';
         }
+        if ($score >= self::DEFAULT_THRESHOLDS['possibly_human']) {
+            return 'possibly_human';
+        }
+        if ($score >= self::DEFAULT_THRESHOLDS['likely_bot']) {
+            return 'probably_bot';
+        }
+
+        return 'definitely_bot';
+
     }
 }

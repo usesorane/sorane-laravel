@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 use Sorane\Laravel\Analytics\HumanProbabilityScorer;
 
 test('it scores typical browser request as human', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
     $request->headers->set('Accept', 'text/html,application/xhtml+xml');
     $request->headers->set('Accept-Language', 'en-US,en;q=0.9');
@@ -27,7 +29,7 @@ test('it scores suspicious user agents as bot', function (): void {
     ];
 
     foreach ($suspiciousAgents as $agent) {
-        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request = Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('User-Agent', $agent);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -38,7 +40,7 @@ test('it scores suspicious user agents as bot', function (): void {
 });
 
 test('it penalizes missing user agent', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->remove('User-Agent');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -49,7 +51,7 @@ test('it penalizes missing user agent', function (): void {
 });
 
 test('it rewards valid referrer', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0');
     $request->headers->set('Referer', 'https://google.com');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
@@ -60,7 +62,7 @@ test('it rewards valid referrer', function (): void {
 });
 
 test('it rewards common browser headers', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0');
     $request->headers->set('Accept', 'text/html');
     $request->headers->set('Accept-Language', 'en-US');
@@ -73,7 +75,7 @@ test('it rewards common browser headers', function (): void {
 });
 
 test('it rewards cookies', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0');
     $request->headers->set('Cookie', 'session=abc123');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
@@ -93,7 +95,7 @@ test('score is always between 0 and 100', function (): void {
     ];
 
     foreach ($userAgents as $ua) {
-        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request = Illuminate\Http\Request::create('/', 'GET');
         if ($ua) {
             $request->headers->set('User-Agent', $ua);
         }
@@ -108,7 +110,7 @@ test('score is always between 0 and 100', function (): void {
 
 test('it classifies scores correctly', function (): void {
     // This test indirectly verifies classification by checking score ranges
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0');
     $request->headers->set('Accept', 'text/html');
     $request->headers->set('Accept-Language', 'en');
@@ -124,7 +126,7 @@ test('it classifies scores correctly', function (): void {
 });
 
 test('it penalizes very short user agents', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'abc'); // Very short
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -134,7 +136,7 @@ test('it penalizes very short user agents', function (): void {
 });
 
 test('it penalizes very long user agents', function (): void {
-    $request = \Illuminate\Http\Request::create('/', 'GET');
+    $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', str_repeat('a', 600));
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 

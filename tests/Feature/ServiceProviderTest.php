@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Sorane\Laravel\SoraneServiceProvider;
 
 test('service provider is registered', function (): void {
@@ -14,8 +16,8 @@ test('config is merged', function (): void {
 });
 
 test('event tracker is registered as singleton', function (): void {
-    $instance1 = app(\Sorane\Laravel\Events\EventTracker::class);
-    $instance2 = app(\Sorane\Laravel\Events\EventTracker::class);
+    $instance1 = app(Sorane\Laravel\Events\EventTracker::class);
+    $instance2 = app(Sorane\Laravel\Events\EventTracker::class);
 
     expect($instance1)->toBe($instance2);
 });
@@ -23,11 +25,11 @@ test('event tracker is registered as singleton', function (): void {
 test('sorane log driver is registered', function (): void {
     $channel = Log::channel('sorane');
 
-    expect($channel)->toBeInstanceOf(\Psr\Log\LoggerInterface::class);
+    expect($channel)->toBeInstanceOf(Psr\Log\LoggerInterface::class);
 });
 
 test('blade directive is registered', function (): void {
-    $directives = \Illuminate\Support\Facades\Blade::getCustomDirectives();
+    $directives = Illuminate\Support\Facades\Blade::getCustomDirectives();
 
     expect($directives)->toHaveKey('soraneErrorTracking');
 });
@@ -43,11 +45,11 @@ test('javascript error route is registered when enabled', function (): void {
 test('middleware is registered when analytics enabled', function (): void {
     $middleware = app('router')->getMiddlewareGroups()['web'] ?? [];
 
-    expect($middleware)->toContain(\Sorane\Laravel\Analytics\Middleware\TrackPageVisit::class);
+    expect($middleware)->toContain(Sorane\Laravel\Analytics\Middleware\TrackPageVisit::class);
 });
 
 test('commands are registered', function (): void {
-    $commands = \Illuminate\Support\Facades\Artisan::all();
+    $commands = Illuminate\Support\Facades\Artisan::all();
 
     expect($commands)->toHaveKeys([
         'sorane:test',
@@ -58,8 +60,8 @@ test('commands are registered', function (): void {
 });
 
 test('facades are accessible', function (): void {
-    expect(class_exists(\Sorane\Laravel\Facades\Sorane::class))->toBeTrue();
-    expect(class_exists(\Sorane\Laravel\Facades\SoraneEvents::class))->toBeTrue();
+    expect(class_exists(Sorane\Laravel\Facades\Sorane::class))->toBeTrue();
+    expect(class_exists(Sorane\Laravel\Facades\SoraneEvents::class))->toBeTrue();
 });
 
 test('package views are loadable', function (): void {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Analytics;
 
 use Illuminate\Http\Request;
@@ -43,7 +45,7 @@ class VisitDataCollector
             return null;
         }
 
-        $ua = strtolower($userAgent);
+        $ua = mb_strtolower($userAgent);
 
         // Check for tablets first (more specific)
         if (

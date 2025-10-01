@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Queue;
 use Sorane\Laravel\Facades\SoraneEvents;
 use Sorane\Laravel\Jobs\SendEventToSoraneJob;
@@ -20,10 +22,12 @@ test('product added to cart helper works', function (): void {
     );
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['event_name'] === 'product_added_to_cart'
-            && $job->eventData['properties']['product_id'] === 'PROD-123'
-            && $job->eventData['properties']['price'] === 29.99
-            && $job->eventData['properties']['quantity'] === 2;
+        $eventData = $job->getEventData();
+
+        return $eventData['event_name'] === 'product_added_to_cart'
+            && $eventData['properties']['product_id'] === 'PROD-123'
+            && $eventData['properties']['price'] === 29.99
+            && $eventData['properties']['quantity'] === 2;
     });
 });
 
@@ -41,10 +45,12 @@ test('sale helper works', function (): void {
     );
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['event_name'] === 'sale'
-            && $job->eventData['properties']['order_id'] === 'ORDER-456'
-            && $job->eventData['properties']['total_amount'] === 89.97
-            && count($job->eventData['properties']['products']) === 2;
+        $eventData = $job->getEventData();
+
+        return $eventData['event_name'] === 'sale'
+            && $eventData['properties']['order_id'] === 'ORDER-456'
+            && $eventData['properties']['total_amount'] === 89.97
+            && count($eventData['properties']['products']) === 2;
     });
 });
 
@@ -57,9 +63,11 @@ test('user registered helper works', function (): void {
     );
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['event_name'] === 'user_registered'
-            && $job->eventData['user']['id'] === 123
-            && $job->eventData['properties']['source'] === 'website';
+        $eventData = $job->getEventData();
+
+        return $eventData['event_name'] === 'user_registered'
+            && $eventData['user']['id'] === 123
+            && $eventData['properties']['source'] === 'website';
     });
 });
 
@@ -69,8 +77,10 @@ test('user logged in helper works', function (): void {
     SoraneEvents::userLoggedIn(userId: 456);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['event_name'] === 'user_logged_in'
-            && $job->eventData['user']['id'] === 456;
+        $eventData = $job->getEventData();
+
+        return $eventData['event_name'] === 'user_logged_in'
+            && $eventData['user']['id'] === 456;
     });
 });
 
@@ -80,9 +90,11 @@ test('page view helper works', function (): void {
     SoraneEvents::pageView('Pricing Page', ['variant' => 'A']);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['event_name'] === 'page_view'
-            && $job->eventData['properties']['page_name'] === 'Pricing Page'
-            && $job->eventData['properties']['variant'] === 'A';
+        $eventData = $job->getEventData();
+
+        return $eventData['event_name'] === 'page_view'
+            && $eventData['properties']['page_name'] === 'Pricing Page'
+            && $eventData['properties']['variant'] === 'A';
     });
 });
 
@@ -97,8 +109,10 @@ test('custom event helper works with valid name', function (): void {
     SoraneEvents::custom('newsletter_signup', ['source' => 'footer']);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['event_name'] === 'newsletter_signup'
-            && $job->eventData['properties']['source'] === 'footer';
+        $eventData = $job->getEventData();
+
+        return $eventData['event_name'] === 'newsletter_signup'
+            && $eventData['properties']['source'] === 'footer';
     });
 });
 

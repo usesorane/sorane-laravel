@@ -2,6 +2,16 @@
 
 return [
     'key' => env('SORANE_KEY'),
+
+    'error_reporting' => [
+        'enabled' => env('SORANE_ERROR_REPORTING_ENABLED', true),
+        'queue' => env('SORANE_ERROR_REPORTING_QUEUE', false),
+        'queue_name' => env('SORANE_ERROR_REPORTING_QUEUE_NAME', 'default'),
+        'timeout' => env('SORANE_ERROR_REPORTING_TIMEOUT', 5),
+        'max_file_size' => env('SORANE_ERROR_REPORTING_MAX_FILE_SIZE', 1048576), // 1MB
+        'max_trace_length' => env('SORANE_ERROR_REPORTING_MAX_TRACE_LENGTH', 5000),
+    ],
+
     'events' => [
         'enabled' => env('SORANE_EVENTS_ENABLED', true),
         'queue' => env('SORANE_EVENTS_QUEUE', true),
@@ -18,7 +28,8 @@ return [
     ],
     'website_analytics' => [
         'enabled' => env('SORANE_WEBSITE_ANALYTICS_ENABLED', false),
-        'queue' => env('SORANE_WEBSITE_ANALYTICS_QUEUE', 'default'),
+        'queue' => env('SORANE_WEBSITE_ANALYTICS_QUEUE', true),
+        'queue_name' => env('SORANE_WEBSITE_ANALYTICS_QUEUE_NAME', 'default'),
         'excluded_paths' => [
             'horizon',
             'nova',
@@ -32,6 +43,9 @@ return [
             '_debugbar',
         ],
         'request_filter' => null,
+        'debug' => [
+            'preserve_user_agent' => env('SORANE_WEBSITE_ANALYTICS_DEBUG_PRESERVE_UA', false),
+        ],
     ],
     'javascript_errors' => [
         'enabled' => env('SORANE_JAVASCRIPT_ERRORS_ENABLED', false),

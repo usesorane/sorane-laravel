@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
@@ -13,12 +15,9 @@ class SendJavaScriptErrorToSoraneJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public array $errorData;
-
-    public function __construct(array $errorData)
-    {
-        $this->errorData = $errorData;
-
+    public function __construct(
+        protected array $errorData
+    ) {
         // Optionally assign queue name from config
         $this->onQueue(config('sorane.javascript_errors.queue_name', 'default'));
     }
@@ -28,6 +27,11 @@ class SendJavaScriptErrorToSoraneJob implements ShouldQueue
         $payload = $this->filterPayload($this->errorData);
 
         $client->sendError($payload, 'javascript');
+    }
+
+    public function getErrorData(): array
+    {
+        return $this->errorData;
     }
 
     protected function filterPayload(array $data): array

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Commands;
 
 use Illuminate\Console\Command;
@@ -77,7 +79,7 @@ class SoraneTestCommand extends Command
 
         // Validate the configuration
         $this->info('Sorane configuration is valid.');
-        $this->info('API Key: '.substr($configFile['key'], 0, 4).'******');
+        $this->info('API Key: '.mb_substr($configFile['key'], 0, 4).'******');
         $this->info('Website Analytics: '.($configFile['website_analytics']['enabled'] ? 'Enabled' : 'Disabled'));
         if ($configFile['website_analytics']['enabled']) {
             $this->info('Website Analytics Queue: '.$configFile['website_analytics']['queue']);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
@@ -8,6 +10,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
 use Sorane\Laravel\Jobs\SendJavaScriptErrorToSoraneJob;
 use Sorane\Laravel\Utilities\DataSanitizer;
+use Throwable;
 
 class JavaScriptErrorController extends Controller
 {
@@ -52,7 +55,7 @@ class JavaScriptErrorController extends Controller
         $errorMessage = $request->input('message');
 
         foreach ($ignoredErrors as $pattern) {
-            if (stripos($errorMessage, $pattern) !== false) {
+            if (mb_stripos($errorMessage, $pattern) !== false) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Error ignored based on pattern',
@@ -108,7 +111,7 @@ class JavaScriptErrorController extends Controller
                 'success' => true,
                 'message' => 'Error received',
             ], 200);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to process error',
@@ -128,7 +131,7 @@ class JavaScriptErrorController extends Controller
             return [
                 'timestamp' => $breadcrumb['timestamp'] ?? now()->format('c'),
                 'category' => $breadcrumb['category'] ?? 'unknown',
-                'message' => substr($breadcrumb['message'] ?? '', 0, 500),
+                'message' => mb_substr($breadcrumb['message'] ?? '', 0, 500),
                 'data' => DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? []),
             ];
         }, $breadcrumbs);

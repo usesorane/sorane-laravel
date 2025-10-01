@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Http;
 use Sorane\Laravel\Services\SoraneApiClient;
 
@@ -93,7 +95,7 @@ test('it returns false on failed response', function (): void {
 
 test('it handles network exceptions gracefully', function (): void {
     Http::fake(function (): void {
-        throw new \Exception('Network error');
+        throw new Exception('Network error');
     });
 
     $client = new SoraneApiClient('test-key');

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
@@ -13,14 +15,11 @@ class SendPageVisitToSoraneJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public array $visitData;
-
-    public function __construct(array $visitData)
-    {
-        $this->visitData = $visitData;
-
+    public function __construct(
+        protected array $visitData
+    ) {
         // Optionally assign queue name from config
-        $this->onQueue(config('sorane.website_analytics.queue', 'default'));
+        $this->onQueue(config('sorane.website_analytics.queue_name', 'default'));
     }
 
     public function handle(SoraneApiClient $client): void
@@ -28,6 +27,11 @@ class SendPageVisitToSoraneJob implements ShouldQueue
         $payload = $this->filterPayload($this->visitData);
 
         $client->sendPageVisit($payload);
+    }
+
+    public function getVisitData(): array
+    {
+        return $this->visitData;
     }
 
     protected function filterPayload(array $data): array

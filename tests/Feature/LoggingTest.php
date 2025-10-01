@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Sorane\Laravel\Jobs\SendLogToSoraneJob;
@@ -23,9 +25,9 @@ test('it sends logs to sorane channel', function (): void {
     ]);
 
     Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
-        return $job->logData['level'] === 'error'
-            && $job->logData['message'] === 'Test error message'
-            && $job->logData['context']['context'] === 'test';
+        return $job->getLogData()['level'] === 'error'
+            && $job->getLogData()['message'] === 'Test error message'
+            && $job->getLogData()['context']['context'] === 'test';
     });
 });
 
@@ -33,9 +35,9 @@ test('it includes environment information', function (): void {
     Log::channel('sorane')->error('Test');
 
     Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
-        return isset($job->logData['extra']['environment'])
-            && isset($job->logData['extra']['laravel_version'])
-            && isset($job->logData['extra']['php_version']);
+        return isset($job->getLogData()['extra']['environment'])
+            && isset($job->getLogData()['extra']['laravel_version'])
+            && isset($job->getLogData()['extra']['php_version']);
     });
 });
 
@@ -78,8 +80,8 @@ test('it sanitizes context with closures', function (): void {
     ]);
 
     Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
-        return $job->logData['context']['closure'] === '[Closure]'
-            && $job->logData['context']['safe'] === 'value';
+        return $job->getLogData()['context']['closure'] === '[Closure]'
+            && $job->getLogData()['context']['safe'] === 'value';
     });
 });
 
@@ -88,7 +90,7 @@ test('it formats timestamp correctly', function (): void {
 
     Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
         // ISO 8601 format
-        return preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/', $job->logData['timestamp']) === 1;
+        return preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/', $job->getLogData()['timestamp']) === 1;
     });
 });
 
@@ -96,6 +98,6 @@ test('it includes channel name', function (): void {
     Log::channel('sorane')->error('Test');
 
     Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
-        return $job->logData['channel'] === 'sorane';
+        return $job->getLogData()['channel'] === 'sorane';
     });
 });

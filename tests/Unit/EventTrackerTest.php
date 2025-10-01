@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Queue;
 use Sorane\Laravel\Events\EventTracker;
 use Sorane\Laravel\Facades\Sorane;
@@ -32,8 +34,10 @@ test('it tracks events successfully with validation', function (): void {
     Sorane::trackEvent('user_registered', ['source' => 'test']);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['event_name'] === 'user_registered'
-            && $job->eventData['properties']['source'] === 'test';
+        $eventData = $job->getEventData();
+
+        return $eventData['event_name'] === 'user_registered'
+            && $eventData['properties']['source'] === 'test';
     });
 });
 
@@ -43,7 +47,9 @@ test('it tracks events without validation when disabled', function (): void {
     Sorane::trackEvent('Invalid Event Name!', ['test' => true], null, false);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['event_name'] === 'Invalid Event Name!';
+        $eventData = $job->getEventData();
+
+        return $eventData['event_name'] === 'Invalid Event Name!';
     });
 });
 
@@ -55,8 +61,10 @@ test('it includes user agent hash in event data', function (): void {
     Sorane::trackEvent('test_event', []);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return isset($job->eventData['user_agent_hash'])
-            && ! empty($job->eventData['user_agent_hash']);
+        $eventData = $job->getEventData();
+
+        return isset($eventData['user_agent_hash'])
+            && ! empty($eventData['user_agent_hash']);
     });
 });
 
@@ -66,15 +74,17 @@ test('it includes session id hash in event data', function (): void {
     Sorane::trackEvent('test_event', []);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return isset($job->eventData['session_id_hash'])
-            && ! empty($job->eventData['session_id_hash']);
+        $eventData = $job->getEventData();
+
+        return isset($eventData['session_id_hash'])
+            && ! empty($eventData['session_id_hash']);
     });
 });
 
 test('it includes authenticated user id when available', function (): void {
     Queue::fake();
 
-    $user = new class implements \Illuminate\Contracts\Auth\Authenticatable
+    $user = new class implements Illuminate\Contracts\Auth\Authenticatable
     {
         public int $id = 123;
 
@@ -116,8 +126,10 @@ test('it includes authenticated user id when available', function (): void {
     Sorane::trackEvent('test_event', []);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return isset($job->eventData['user']['id'])
-            && $job->eventData['user']['id'] === 123;
+        $eventData = $job->getEventData();
+
+        return isset($eventData['user']['id'])
+            && $eventData['user']['id'] === 123;
     });
 });
 
@@ -127,7 +139,9 @@ test('it allows explicit user id override', function (): void {
     Sorane::trackEvent('test_event', [], 456);
 
     Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
-        return $job->eventData['user']['id'] === 456;
+        $eventData = $job->getEventData();
+
+        return $eventData['user']['id'] === 456;
     });
 });
 

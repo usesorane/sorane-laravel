@@ -54,13 +54,16 @@ class TrackPageVisit
         // Filter out unrealistic user agents
         $userAgent = $request->userAgent();
 
+        $minLength = config('sorane.website_analytics.user_agent.min_length', 10);
+        $maxLength = config('sorane.website_analytics.user_agent.max_length', 1000);
+
         // Check for extremely short user agents
-        if (mb_strlen($userAgent) < 10) {
+        if (mb_strlen($userAgent) < $minLength) {
             return $next($request);
         }
 
         // Check for excessively long user agents
-        if (mb_strlen($userAgent) > 1000) {
+        if (mb_strlen($userAgent) > $maxLength) {
             return $next($request);
         }
 
@@ -121,8 +124,10 @@ class TrackPageVisit
         );
 
         // Only dispatch the job if not sent recently
+        $throttleSeconds = config('sorane.website_analytics.throttle_seconds', 30);
+
         if (! Cache::has($cacheKey)) {
-            Cache::put($cacheKey, true, now()->addSeconds(30));
+            Cache::put($cacheKey, true, now()->addSeconds($throttleSeconds));
 
             // Dispatch job to send visit data
             if (config('sorane.website_analytics.queue', true)) {

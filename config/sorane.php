@@ -43,6 +43,11 @@ return [
             '_debugbar',
         ],
         'request_filter' => null,
+        'user_agent' => [
+            'min_length' => env('SORANE_WEBSITE_ANALYTICS_UA_MIN_LENGTH', 10),
+            'max_length' => env('SORANE_WEBSITE_ANALYTICS_UA_MAX_LENGTH', 1000),
+        ],
+        'throttle_seconds' => env('SORANE_WEBSITE_ANALYTICS_THROTTLE_SECONDS', 30),
         'debug' => [
             'preserve_user_agent' => env('SORANE_WEBSITE_ANALYTICS_DEBUG_PRESERVE_UA', false),
         ],

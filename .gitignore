@@ -20,3 +20,4 @@ composer.lock
 /.idea
 /.vscode
 .junie/mcp/mcp.json
+.mcp.json

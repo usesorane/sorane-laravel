@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Sorane\Laravel;
 
 use Illuminate\Support\ServiceProvider;
-use RuntimeException;
 use Sorane\Laravel\Analytics\Middleware\TrackPageVisit;
 use Sorane\Laravel\Commands\SoraneEventTestCommand;
 use Sorane\Laravel\Commands\SoraneJavaScriptErrorTestCommand;
@@ -23,6 +22,11 @@ class SoraneServiceProvider extends ServiceProvider
             __DIR__.'/../config/sorane.php',
             'sorane'
         );
+
+        // Register Sorane as singleton
+        $this->app->singleton(Sorane::class, function () {
+            return new Sorane;
+        });
 
         // Register EventTracker as singleton
         $this->app->singleton(EventTracker::class, function () {

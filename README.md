@@ -36,11 +36,22 @@ This is the contents of the published config file:
 ```php
 return [
     'key' => env('SORANE_KEY'),
+
+    'error_reporting' => [
+        'enabled' => env('SORANE_ERROR_REPORTING_ENABLED', true),
+        'queue' => env('SORANE_ERROR_REPORTING_QUEUE', false),
+        'queue_name' => env('SORANE_ERROR_REPORTING_QUEUE_NAME', 'default'),
+        'timeout' => env('SORANE_ERROR_REPORTING_TIMEOUT', 5),
+        'max_file_size' => env('SORANE_ERROR_REPORTING_MAX_FILE_SIZE', 1048576), // 1MB
+        'max_trace_length' => env('SORANE_ERROR_REPORTING_MAX_TRACE_LENGTH', 5000),
+    ],
+
     'events' => [
         'enabled' => env('SORANE_EVENTS_ENABLED', true),
         'queue' => env('SORANE_EVENTS_QUEUE', true),
         'queue_name' => env('SORANE_EVENTS_QUEUE_NAME', 'default'),
     ],
+
     'logging' => [
         'enabled' => env('SORANE_LOGGING_ENABLED', false),
         'queue' => env('SORANE_LOGGING_QUEUE', true),
@@ -50,9 +61,11 @@ return [
             // Note: The handler uses 'single' channel for its own error logging to prevent loops
         ],
     ],
+
     'website_analytics' => [
         'enabled' => env('SORANE_WEBSITE_ANALYTICS_ENABLED', false),
-        'queue' => env('SORANE_WEBSITE_ANALYTICS_QUEUE', 'default'),
+        'queue' => env('SORANE_WEBSITE_ANALYTICS_QUEUE', true),
+        'queue_name' => env('SORANE_WEBSITE_ANALYTICS_QUEUE_NAME', 'default'),
         'excluded_paths' => [
             'horizon',
             'nova',
@@ -66,7 +79,16 @@ return [
             '_debugbar',
         ],
         'request_filter' => null,
+        'user_agent' => [
+            'min_length' => env('SORANE_WEBSITE_ANALYTICS_UA_MIN_LENGTH', 10),
+            'max_length' => env('SORANE_WEBSITE_ANALYTICS_UA_MAX_LENGTH', 1000),
+        ],
+        'throttle_seconds' => env('SORANE_WEBSITE_ANALYTICS_THROTTLE_SECONDS', 30),
+        'debug' => [
+            'preserve_user_agent' => env('SORANE_WEBSITE_ANALYTICS_DEBUG_PRESERVE_UA', false),
+        ],
     ],
+
     'javascript_errors' => [
         'enabled' => env('SORANE_JAVASCRIPT_ERRORS_ENABLED', false),
         'queue' => env('SORANE_JAVASCRIPT_ERRORS_QUEUE', true),
@@ -168,8 +190,8 @@ Sorane makes it easy to track custom events in your Laravel application. You can
 #### Basic Event Tracking
 
 ```php
-use Sorane\ErrorReporting\Facades\Sorane;
-use Sorane\ErrorReporting\Events\EventTracker;
+use Sorane\Laravel\Facades\Sorane;
+use Sorane\Laravel\Events\EventTracker;
 
 // Track a simple event (names must be snake_case)
 Sorane::trackEvent('button_clicked', [
@@ -209,7 +231,7 @@ Sorane::trackEvent('newsletter_signup', ['source' => 'footer']);
 Sorane::trackEvent('Newsletter Signup', ['source' => 'footer']);
 
 // ✅ Use constants to avoid validation issues
-use Sorane\ErrorReporting\Events\EventTracker;
+use Sorane\Laravel\Events\EventTracker;
 Sorane::trackEvent(EventTracker::NEWSLETTER_SIGNUP, ['source' => 'footer']);
 
 // ✅ Bypass validation if needed (advanced usage)
@@ -221,7 +243,7 @@ Sorane::trackEvent('Legacy Event Name', [], null, false);
 Sorane provides convenient helper methods for common e-commerce events with predefined naming:
 
 ```php
-use Sorane\ErrorReporting\Facades\SoraneEvents;
+use Sorane\Laravel\Facades\SoraneEvents;
 
 // Track product added to cart
 SoraneEvents::productAddedToCart(
@@ -286,7 +308,7 @@ SoraneEvents::customUnsafe(
 Use predefined constants to ensure consistent naming and avoid typos:
 
 ```php
-use Sorane\ErrorReporting\Events\EventTracker;
+use Sorane\Laravel\Events\EventTracker;
 
 EventTracker::PRODUCT_ADDED_TO_CART      // 'product_added_to_cart'
 EventTracker::PRODUCT_REMOVED_FROM_CART  // 'product_removed_from_cart'

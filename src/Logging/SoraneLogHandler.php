@@ -13,7 +13,7 @@ use Throwable;
 
 class SoraneLogHandler extends AbstractProcessingHandler
 {
-    public function __construct($level = 'DEBUG', bool $bubble = true)
+    public function __construct(string|int $level = 'DEBUG', bool $bubble = true)
     {
         parent::__construct($level, $bubble);
     }

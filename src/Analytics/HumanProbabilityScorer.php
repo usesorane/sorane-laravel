@@ -59,6 +59,25 @@ class HumanProbabilityScorer
     }
 
     /**
+     * Classify the score into human/bot determination
+     */
+    protected static function classifyScore(int $score): string
+    {
+        if ($score >= self::DEFAULT_THRESHOLDS['likely_human']) {
+            return 'likely_human';
+        }
+        if ($score >= self::DEFAULT_THRESHOLDS['possibly_human']) {
+            return 'possibly_human';
+        }
+        if ($score >= self::DEFAULT_THRESHOLDS['likely_bot']) {
+            return 'probably_bot';
+        }
+
+        return 'definitely_bot';
+
+    }
+
+    /**
      * Instance method to score the request
      */
     protected function scoreRequest(Request $request): array
@@ -264,24 +283,5 @@ class HumanProbabilityScorer
         cache()->put($cacheKey, $requestCount + 1, now()->addMinutes(1));
 
         return $score;
-    }
-
-    /**
-     * Classify the score into human/bot determination
-     */
-    protected static function classifyScore(int $score): string
-    {
-        if ($score >= self::DEFAULT_THRESHOLDS['likely_human']) {
-            return 'likely_human';
-        }
-        if ($score >= self::DEFAULT_THRESHOLDS['possibly_human']) {
-            return 'possibly_human';
-        }
-        if ($score >= self::DEFAULT_THRESHOLDS['likely_bot']) {
-            return 'probably_bot';
-        }
-
-        return 'definitely_bot';
-
     }
 }

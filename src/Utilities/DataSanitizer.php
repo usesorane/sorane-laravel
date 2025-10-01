@@ -12,7 +12,7 @@ class DataSanitizer
     /**
      * Sanitize data for serialization by removing closures and non-serializable values
      */
-    public static function sanitizeForSerialization($data)
+    public static function sanitizeForSerialization(mixed $data): mixed
     {
         if (is_array($data)) {
             $sanitized = [];

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sorane\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;

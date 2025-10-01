@@ -37,9 +37,6 @@ class SoraneServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Validate API key if any feature is enabled
-        $this->validateApiKey();
-
         // Publish config
         if ($this->app->runningInConsole()) {
             $this->publishes([
@@ -85,20 +82,5 @@ class SoraneServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Blade::directive('soraneErrorTracking', function () {
             return "<?php echo view('sorane::error-tracker')->render(); ?>";
         });
-    }
-
-    protected function validateApiKey(): void
-    {
-        $featuresEnabled = config('sorane.error_reporting.enabled', true)
-            || config('sorane.events.enabled', true)
-            || config('sorane.website_analytics.enabled', false)
-            || config('sorane.javascript_errors.enabled', false)
-            || config('sorane.logging.enabled', false);
-
-        if ($featuresEnabled && empty(config('sorane.key'))) {
-            throw new RuntimeException(
-                'Sorane API key is not configured. Please set SORANE_KEY in your .env file or disable Sorane features.'
-            );
-        }
     }
 }

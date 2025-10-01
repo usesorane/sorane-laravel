@@ -24,6 +24,8 @@ class SoraneApiClient
     public function sendError(array $errorData, string $type): bool
     {
         if (empty($this->apiKey)) {
+            Log::warning('Sorane API key not configured. Set SORANE_KEY in your .env file to enable error tracking.');
+
             return false;
         }
 
@@ -71,6 +73,8 @@ class SoraneApiClient
     public function sendEvent(array $eventData): bool
     {
         if (empty($this->apiKey)) {
+            Log::warning('Sorane API key not configured. Set SORANE_KEY in your .env file to enable event tracking.');
+
             return false;
         }
 
@@ -112,6 +116,8 @@ class SoraneApiClient
     public function sendPageVisit(array $visitData): bool
     {
         if (empty($this->apiKey)) {
+            Log::warning('Sorane API key not configured. Set SORANE_KEY in your .env file to enable website analytics.');
+
             return false;
         }
 
@@ -153,6 +159,8 @@ class SoraneApiClient
     public function sendErrorReport(array $errorData): bool
     {
         if (empty($this->apiKey)) {
+            Log::warning('Sorane API key not configured. Set SORANE_KEY in your .env file to enable error reporting.');
+
             return false;
         }
 

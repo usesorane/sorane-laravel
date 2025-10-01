@@ -14,76 +14,110 @@ class SoraneTestCommand extends Command
 
     public function handle(): int
     {
-        // 1. Test if the config file is up to date
-        $this->info('Testing Sorane configuration...');
+        $this->info('🔍 Testing Sorane Configuration...');
+        $this->newLine();
 
-        $configFile = config('sorane');
+        $config = config('sorane');
 
         // Test the structure of the config file
-        if (! is_array($configFile)) {
-            $this->error('Sorane configuration file is not valid. Please check your configuration.');
+        if (! is_array($config)) {
+            $this->error('❌ Sorane configuration file is not valid.');
 
             return self::FAILURE;
         }
 
-        // Check if all required config entries exist
-        $requiredKeys = ['key', 'website_analytics'];
-        foreach ($requiredKeys as $key) {
-            if (! array_key_exists($key, $configFile)) {
-                $this->error("Required config key '{$key}' is missing. Please check your configuration.");
+        // Check API key
+        if (empty($config['key'])) {
+            $this->error('❌ Sorane API key is not set.');
+            $this->info('💡 Add to your .env file: SORANE_KEY=your-api-key-here');
 
-                return self::FAILURE;
+            return self::FAILURE;
+        }
+
+        $this->info('✅ API Key configured: '.mb_substr($config['key'], 0, 4).'******');
+        $this->newLine();
+
+        // Check each feature configuration
+        $features = [
+            'error_reporting' => 'Error Reporting',
+            'events' => 'Event Tracking',
+            'website_analytics' => 'Website Analytics',
+            'javascript_errors' => 'JavaScript Errors',
+            'logging' => 'Centralized Logging',
+        ];
+
+        $this->line('📋 <fg=cyan>Feature Configuration:</>');
+        $rows = [];
+
+        foreach ($features as $key => $name) {
+            if (! isset($config[$key])) {
+                $this->warn("⚠️  Feature '{$key}' is missing from config");
+
+                continue;
+            }
+
+            $feature = $config[$key];
+            $enabled = $feature['enabled'] ?? false;
+            $queue = $feature['queue'] ?? false;
+            $queueName = $feature['queue_name'] ?? 'default';
+
+            $rows[] = [
+                $name,
+                $enabled ? '✅ Enabled' : '❌ Disabled',
+                $queue ? '✅ Queued' : '⚡ Sync',
+                $queueName,
+            ];
+
+            // Validate structure
+            if (! is_bool($enabled)) {
+                $this->warn("⚠️  {$name}: 'enabled' should be boolean, got ".gettype($enabled));
+            }
+
+            if (! is_bool($queue)) {
+                $this->warn("⚠️  {$name}: 'queue' should be boolean, got ".gettype($queue));
             }
         }
 
-        // Check website_analytics subkeys
-        if (! is_array($configFile['website_analytics'])) {
-            $this->error("Config key 'website_analytics' must be an array. Please check your configuration.");
+        $this->table(['Feature', 'Status', 'Processing', 'Queue'], $rows);
+        $this->newLine();
 
-            return self::FAILURE;
+        // Show warnings if features are disabled
+        $enabledFeatures = collect($features)->filter(function ($name, $key) use ($config) {
+            return $config[$key]['enabled'] ?? false;
+        });
+
+        if ($enabledFeatures->isEmpty()) {
+            $this->warn('⚠️  All features are currently disabled.');
+            $this->info('💡 Enable features in your .env file:');
+            $this->line('   SORANE_ERROR_REPORTING_ENABLED=true');
+            $this->line('   SORANE_EVENTS_ENABLED=true');
+            $this->line('   SORANE_WEBSITE_ANALYTICS_ENABLED=true');
+            $this->line('   SORANE_JAVASCRIPT_ERRORS_ENABLED=true');
+            $this->line('   SORANE_LOGGING_ENABLED=true');
+            $this->newLine();
         }
 
-        $analyticsRequiredKeys = ['enabled', 'queue'];
-        foreach ($analyticsRequiredKeys as $key) {
-            if (! array_key_exists($key, $configFile['website_analytics'])) {
-                $this->error("Required config key 'website_analytics.{$key}' is missing. Please check your configuration.");
-
-                return self::FAILURE;
-            }
+        // Additional config details
+        if (! empty($config['error_reporting'])) {
+            $this->line('⚙️  <fg=cyan>Error Reporting Settings:</>');
+            $this->table(
+                ['Setting', 'Value'],
+                [
+                    ['Timeout', ($config['error_reporting']['timeout'] ?? 5).' seconds'],
+                    ['Max File Size', number_format($config['error_reporting']['max_file_size'] ?? 1048576).' bytes'],
+                    ['Max Trace Length', number_format($config['error_reporting']['max_trace_length'] ?? 5000).' chars'],
+                ]
+            );
+            $this->newLine();
         }
 
-        if (empty($configFile['key'])) {
-            $this->error('Sorane API key is not set. Please check your configuration.');
+        $this->info('✅ Sorane configuration is valid!');
+        $this->newLine();
 
-            return self::FAILURE;
-        }
-
-        // Check if website_analytics.enabled is a boolean
-        if (! is_bool($configFile['website_analytics']['enabled'])) {
-            $this->error("Config key 'website_analytics.enabled' must be a boolean. Please check your configuration.");
-
-            return self::FAILURE;
-        }
-
-        // Check if website_analytics.queue is not empty if analytics are enabled
-        if ($configFile['website_analytics']['enabled'] && empty($configFile['website_analytics']['queue'])) {
-            $this->error("Config key 'website_analytics.queue' cannot be empty when analytics are enabled.");
-
-            return self::FAILURE;
-        }
-
-        // Check environment variables
-        if (empty(env('SORANE_KEY'))) {
-            $this->warn('Environment variable SORANE_KEY is not set. Using fallback value.');
-        }
-
-        // Validate the configuration
-        $this->info('Sorane configuration is valid.');
-        $this->info('API Key: '.mb_substr($configFile['key'], 0, 4).'******');
-        $this->info('Website Analytics: '.($configFile['website_analytics']['enabled'] ? 'Enabled' : 'Disabled'));
-        if ($configFile['website_analytics']['enabled']) {
-            $this->info('Website Analytics Queue: '.$configFile['website_analytics']['queue']);
-        }
+        $this->info('📚 Next steps:');
+        $this->line('   • Run <fg=yellow>php artisan sorane:test-events</> to test event tracking');
+        $this->line('   • Run <fg=yellow>php artisan sorane:test-logging</> to test logging');
+        $this->line('   • Run <fg=yellow>php artisan sorane:test-javascript-errors</> for JS setup');
 
         return self::SUCCESS;
     }

@@ -4,22 +4,14 @@ declare(strict_types=1);
 
 namespace Sorane\Laravel\Jobs;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Sorane\Laravel\Services\SoraneApiClient;
 
-class SendEventToSoraneJob implements ShouldQueue
+class SendEventToSoraneJob extends BaseSoraneJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
     public function __construct(
         protected array $eventData
     ) {
-        // Optionally assign queue name from config
-        $this->onQueue(config('sorane.events.queue_name', 'default'));
+        $this->assignQueue();
     }
 
     public function handle(SoraneApiClient $client): void
@@ -34,9 +26,14 @@ class SendEventToSoraneJob implements ShouldQueue
         return $this->eventData;
     }
 
-    protected function filterPayload(array $data): array
+    protected function getConfigPath(): string
     {
-        $allowedKeys = [
+        return 'sorane.events';
+    }
+
+    protected function getAllowedKeys(): array
+    {
+        return [
             'event_name',
             'properties',
             'user',
@@ -45,9 +42,5 @@ class SendEventToSoraneJob implements ShouldQueue
             'user_agent_hash',
             'session_id_hash',
         ];
-
-        return collect($data)
-            ->only($allowedKeys)
-            ->toArray();
     }
 }

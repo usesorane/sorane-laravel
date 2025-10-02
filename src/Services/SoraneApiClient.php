@@ -235,7 +235,13 @@ class SoraneApiClient
                 ]);
 
             if ($response->successful()) {
-                return $response->json();
+                $data = $response->json();
+
+                return is_array($data) ? $data : [
+                    'success' => true,
+                    'received' => count($events),
+                    'processed' => count($events),
+                ];
             }
 
             return [
@@ -286,7 +292,13 @@ class SoraneApiClient
                 ]);
 
             if ($response->successful()) {
-                return $response->json();
+                $data = $response->json();
+
+                return is_array($data) ? $data : [
+                    'success' => true,
+                    'received' => count($logs),
+                    'processed' => count($logs),
+                ];
             }
 
             return [
@@ -337,7 +349,13 @@ class SoraneApiClient
                 ]);
 
             if ($response->successful()) {
-                return $response->json();
+                $data = $response->json();
+
+                return is_array($data) ? $data : [
+                    'success' => true,
+                    'received' => count($visits),
+                    'processed' => count($visits),
+                ];
             }
 
             return [
@@ -394,7 +412,13 @@ class SoraneApiClient
                 ]);
 
             if ($response->successful()) {
-                return $response->json();
+                $data = $response->json();
+
+                return is_array($data) ? $data : [
+                    'success' => true,
+                    'received' => count($errors),
+                    'processed' => count($errors),
+                ];
             }
 
             return [

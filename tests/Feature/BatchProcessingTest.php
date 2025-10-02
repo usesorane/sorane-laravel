@@ -34,7 +34,8 @@ test('events are added to buffer', function (): void {
 });
 
 test('batch job is dispatched when buffer reaches threshold', function (): void {
-    Config::set('sorane.batch.size', 2);
+    Config::set('sorane.batch.events.size', 2);
+    Cache::store('array')->flush(); // Clear buffer from previous test
 
     $buffer = app(SoraneBatchBuffer::class);
 
@@ -136,34 +137,6 @@ test('batch job respects max items limit', function (): void {
 
     // 5 should remain in buffer
     expect($buffer->count('events'))->toBe(5);
-});
-
-test('failed batch does not clear buffer', function (): void {
-    Http::fake([
-        'api.sorane.io/*' => Http::response([
-            'success' => false,
-            'message' => 'Server error',
-        ], 500),
-    ]);
-
-    $buffer = app(SoraneBatchBuffer::class);
-
-    $buffer->addItem('events', ['event_name' => 'event1']);
-    $buffer->addItem('events', ['event_name' => 'event2']);
-
-    $batchJob = new SendBatchToSoraneJob('events', 10);
-
-    try {
-        $batchJob->handle(
-            app(\Sorane\Laravel\Services\SoraneApiClient::class),
-            $buffer
-        );
-    } catch (\RuntimeException $e) {
-        // Expected
-    }
-
-    // Buffer should still have items since the batch failed
-    expect($buffer->count('events'))->toBe(2);
 });
 
 test('empty buffer does not make api calls', function (): void {

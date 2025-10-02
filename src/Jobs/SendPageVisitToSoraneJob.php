@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Sorane\Laravel\Services\SoraneApiClient;
+use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 class SendPageVisitToSoraneJob implements ShouldQueue
 {
@@ -22,11 +23,18 @@ class SendPageVisitToSoraneJob implements ShouldQueue
         $this->onQueue(config('sorane.website_analytics.queue_name', 'default'));
     }
 
-    public function handle(SoraneApiClient $client): void
+    public function handle(SoraneBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->visitData);
 
-        $client->sendPageVisit($payload);
+        // Add to buffer
+        $buffer->addItem('page_visits', $payload);
+
+        // Check if we should trigger a batch flush
+        $batchSize = config('sorane.batch.page_visits.size', config('sorane.batch.size', 100));
+        if ($buffer->count('page_visits') >= $batchSize) {
+            SendBatchToSoraneJob::dispatch('page_visits');
+        }
     }
 
     public function getVisitData(): array

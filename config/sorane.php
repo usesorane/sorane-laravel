@@ -95,4 +95,41 @@ return [
         'capture_console_errors' => env('SORANE_JAVASCRIPT_CAPTURE_CONSOLE_ERRORS', false),
         'max_breadcrumbs' => env('SORANE_JAVASCRIPT_MAX_BREADCRUMBS', 20),
     ],
+
+    'batch' => [
+        // Queue name for batch jobs
+        'queue_name' => env('SORANE_BATCH_QUEUE_NAME', 'default'),
+
+        // Cache driver for buffering (redis, database, file)
+        'cache_driver' => env('SORANE_BATCH_CACHE_DRIVER', 'redis'),
+
+        // Buffer TTL in seconds (how long items stay in buffer before expiring)
+        'buffer_ttl' => env('SORANE_BATCH_BUFFER_TTL', 3600), // 1 hour
+
+        // Maximum buffer size to prevent memory issues
+        'max_buffer_size' => env('SORANE_BATCH_MAX_BUFFER_SIZE', 1000),
+
+        // Default batch size (items per batch)
+        'size' => env('SORANE_BATCH_SIZE', 100),
+
+        // Retry failed items individually
+        'retry_failed_items_individually' => env('SORANE_BATCH_RETRY_INDIVIDUALLY', true),
+
+        // Maximum retries for batch jobs
+        'max_retries' => env('SORANE_BATCH_MAX_RETRIES', 3),
+
+        // Per-type batch size settings (optional overrides)
+        'events' => [
+            'size' => env('SORANE_BATCH_EVENTS_SIZE', 100),
+        ],
+        'logs' => [
+            'size' => env('SORANE_BATCH_LOGS_SIZE', 50),
+        ],
+        'page_visits' => [
+            'size' => env('SORANE_BATCH_VISITS_SIZE', 200),
+        ],
+        'javascript_errors' => [
+            'size' => env('SORANE_BATCH_JS_ERRORS_SIZE', 50),
+        ],
+    ],
 ];

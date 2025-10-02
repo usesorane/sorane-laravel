@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Sorane\Laravel;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Sorane\Laravel\Analytics\Middleware\TrackPageVisit;
+use Sorane\Laravel\Commands\SoraneWorkCommand;
 use Sorane\Laravel\Commands\SoraneEventTestCommand;
 use Sorane\Laravel\Commands\SoraneJavaScriptErrorTestCommand;
 use Sorane\Laravel\Commands\SoraneLogTestCommand;
@@ -53,8 +55,12 @@ class SoraneServiceProvider extends ServiceProvider
                 SoraneEventTestCommand::class,
                 SoraneLogTestCommand::class,
                 SoraneJavaScriptErrorTestCommand::class,
+                SoraneWorkCommand::class,
             ]);
         }
+
+        // Register scheduled batch sending
+        $this->scheduleBatchSending();
 
         // Load package views
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sorane');
@@ -85,6 +91,16 @@ class SoraneServiceProvider extends ServiceProvider
     {
         \Illuminate\Support\Facades\Blade::directive('soraneErrorTracking', function () {
             return "<?php echo view('sorane::error-tracker')->render(); ?>";
+        });
+    }
+
+    protected function scheduleBatchSending(): void
+    {
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
+            $schedule->command('sorane:work')
+                ->everySeconds(60)
+                ->withoutOverlapping()
+                ->runInBackground();
         });
     }
 }

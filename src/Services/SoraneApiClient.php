@@ -199,4 +199,214 @@ class SoraneApiClient
             return false;
         }
     }
+
+    /**
+     * Send a batch of events to Sorane.
+     *
+     * @param  array<int, array>  $events
+     * @return array<string, mixed>
+     */
+    public function sendEventBatch(array $events): array
+    {
+        if (empty($this->apiKey)) {
+            return [
+                'success' => false,
+                'message' => 'API key not configured',
+            ];
+        }
+
+        if (empty($events)) {
+            return [
+                'success' => true,
+                'received' => 0,
+                'processed' => 0,
+            ];
+        }
+
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/events-batch/1.0',
+                    'Content-Type' => 'application/json',
+                ])
+                ->timeout($this->timeout * 2) // Double timeout for batches
+                ->post($this->apiUrl.'/events/store-batch', [
+                    'events' => $events,
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [
+                'success' => false,
+                'message' => "API request failed with status {$response->status()}",
+                'status' => $response->status(),
+            ];
+        } catch (Throwable $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Send a batch of logs to Sorane.
+     *
+     * @param  array<int, array>  $logs
+     * @return array<string, mixed>
+     */
+    public function sendLogBatch(array $logs): array
+    {
+        if (empty($this->apiKey)) {
+            return [
+                'success' => false,
+                'message' => 'API key not configured',
+            ];
+        }
+
+        if (empty($logs)) {
+            return [
+                'success' => true,
+                'received' => 0,
+                'processed' => 0,
+            ];
+        }
+
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/logs-batch/1.0',
+                    'Content-Type' => 'application/json',
+                ])
+                ->timeout($this->timeout * 2)
+                ->post($this->apiUrl.'/logs/store-batch', [
+                    'logs' => $logs,
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [
+                'success' => false,
+                'message' => "API request failed with status {$response->status()}",
+                'status' => $response->status(),
+            ];
+        } catch (Throwable $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Send a batch of page visits to Sorane.
+     *
+     * @param  array<int, array>  $visits
+     * @return array<string, mixed>
+     */
+    public function sendPageVisitBatch(array $visits): array
+    {
+        if (empty($this->apiKey)) {
+            return [
+                'success' => false,
+                'message' => 'API key not configured',
+            ];
+        }
+
+        if (empty($visits)) {
+            return [
+                'success' => true,
+                'received' => 0,
+                'processed' => 0,
+            ];
+        }
+
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/page-visits-batch/1.0',
+                    'Content-Type' => 'application/json',
+                ])
+                ->timeout($this->timeout * 2)
+                ->post($this->apiUrl.'/page-visits/store-batch', [
+                    'visits' => $visits,
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [
+                'success' => false,
+                'message' => "API request failed with status {$response->status()}",
+                'status' => $response->status(),
+            ];
+        } catch (Throwable $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Send a batch of errors to Sorane.
+     *
+     * @param  array<int, array>  $errors
+     * @return array<string, mixed>
+     */
+    public function sendErrorBatch(array $errors, string $type): array
+    {
+        if (empty($this->apiKey)) {
+            return [
+                'success' => false,
+                'message' => 'API key not configured',
+            ];
+        }
+
+        if (empty($errors)) {
+            return [
+                'success' => true,
+                'received' => 0,
+                'processed' => 0,
+            ];
+        }
+
+        $endpoint = match ($type) {
+            'javascript' => '/javascript-errors/store-batch',
+            'log' => '/logs/store-batch',
+            default => '/errors/store-batch',
+        };
+
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => "Sorane-Laravel/{$type}-batch/1.0",
+                    'Content-Type' => 'application/json',
+                ])
+                ->timeout($this->timeout * 2)
+                ->post($this->apiUrl.$endpoint, [
+                    'errors' => $errors,
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [
+                'success' => false,
+                'message' => "API request failed with status {$response->status()}",
+                'status' => $response->status(),
+            ];
+        } catch (Throwable $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
 }

@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Sorane\Laravel\Services\SoraneApiClient;
+use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 class SendLogToSoraneJob implements ShouldQueue
 {
@@ -22,11 +23,18 @@ class SendLogToSoraneJob implements ShouldQueue
         $this->onQueue(config('sorane.logging.queue_name', 'default'));
     }
 
-    public function handle(SoraneApiClient $client): void
+    public function handle(SoraneBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->logData);
 
-        $client->sendError($payload, 'log');
+        // Add to buffer
+        $buffer->addItem('logs', $payload);
+
+        // Check if we should trigger a batch flush
+        $batchSize = config('sorane.batch.logs.size', config('sorane.batch.size', 100));
+        if ($buffer->count('logs') >= $batchSize) {
+            SendBatchToSoraneJob::dispatch('logs');
+        }
     }
 
     public function getLogData(): array

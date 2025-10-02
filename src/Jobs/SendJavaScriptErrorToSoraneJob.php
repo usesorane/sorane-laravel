@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Sorane\Laravel\Services\SoraneApiClient;
+use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 class SendJavaScriptErrorToSoraneJob implements ShouldQueue
 {
@@ -22,11 +23,18 @@ class SendJavaScriptErrorToSoraneJob implements ShouldQueue
         $this->onQueue(config('sorane.javascript_errors.queue_name', 'default'));
     }
 
-    public function handle(SoraneApiClient $client): void
+    public function handle(SoraneBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->errorData);
 
-        $client->sendError($payload, 'javascript');
+        // Add to buffer
+        $buffer->addItem('javascript_errors', $payload);
+
+        // Check if we should trigger a batch flush
+        $batchSize = config('sorane.batch.javascript_errors.size', config('sorane.batch.size', 100));
+        if ($buffer->count('javascript_errors') >= $batchSize) {
+            SendBatchToSoraneJob::dispatch('javascript_errors');
+        }
     }
 
     public function getErrorData(): array

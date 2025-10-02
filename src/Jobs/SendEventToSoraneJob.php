@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sorane\Laravel\Jobs;
 
 use Sorane\Laravel\Services\SoraneApiClient;
+use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 class SendEventToSoraneJob extends BaseSoraneJob
 {
@@ -14,11 +15,18 @@ class SendEventToSoraneJob extends BaseSoraneJob
         $this->assignQueue();
     }
 
-    public function handle(SoraneApiClient $client): void
+    public function handle(SoraneBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->eventData);
 
-        $client->sendEvent($payload);
+        // Add to buffer
+        $buffer->addItem('events', $payload);
+
+        // Check if we should trigger a batch flush
+        $batchSize = config('sorane.batch.events.size', config('sorane.batch.size', 100));
+        if ($buffer->count('events') >= $batchSize) {
+            SendBatchToSoraneJob::dispatch('events');
+        }
     }
 
     public function getEventData(): array

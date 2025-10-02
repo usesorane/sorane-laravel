@@ -77,6 +77,10 @@ test('it filters suspicious user agents', function (): void {
         'Postman Runtime',
         'test',
         'ab', // Too short
+        'Go-http-client/1.1',
+        'axios/0.21.1',
+        'HeadlessChrome/91.0',
+        'Puppeteer/10.0',
     ];
 
     foreach ($suspiciousAgents as $agent) {
@@ -106,7 +110,11 @@ test('it throttles duplicate visits', function (): void {
     Bus::fake();
     Cache::flush();
 
-    $headers = ['User-Agent' => 'Mozilla/5.0'];
+    $headers = [
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ];
 
     // First request
     $this->withHeaders($headers)->get('/test-page');
@@ -140,6 +148,89 @@ test('it skips internal requests', function (): void {
         'User-Agent' => 'Mozilla/5.0',
         'X-Client-Mode' => 'passive',
     ])->get('/');
+
+    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+});
+
+test('it filters requests without Accept-Language header', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // Create a request without Accept-Language
+    $request = Illuminate\Http\Request::create('/', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    $request->headers->set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8');
+
+    // Remove the default Accept-Language header that Laravel adds
+    $request->headers->remove('Accept-Language');
+
+    // Verify no Accept-Language header
+    expect($request->header('Accept-Language'))->toBeNull();
+
+    $middleware = new Sorane\Laravel\Analytics\Middleware\TrackPageVisit;
+    $response = $middleware->handle($request, function ($req) {
+        return response('OK');
+    });
+
+    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+});
+
+test('it filters requests with generic Accept header', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    $this->withHeaders([
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => '*/*',
+        'Accept-Language' => 'en-US',
+    ])->get('/');
+
+    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+});
+
+test('it tracks requests with proper browser headers', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    $this->withHeaders([
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+        'Accept-Encoding' => 'gzip, deflate, br',
+    ])->get('/');
+
+    Bus::assertDispatched(SendPageVisitToSoraneJob::class);
+});
+
+test('it filters AI bot user agents', function (): void {
+    Bus::fake();
+
+    $aiBots = [
+        'GPTBot/1.0',
+        'ClaudeBot/1.0',
+        'ChatGPT-User/1.0',
+        'Claude-Web/1.0',
+    ];
+
+    foreach ($aiBots as $bot) {
+        $this->withHeaders(['User-Agent' => $bot])->get('/');
+    }
+
+    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+});
+
+test('it filters headless browser user agents', function (): void {
+    Bus::fake();
+
+    $headlessBrowsers = [
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Puppeteer',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Playwright',
+    ];
+
+    foreach ($headlessBrowsers as $browser) {
+        $this->withHeaders(['User-Agent' => $browser])->get('/');
+    }
 
     Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
 });

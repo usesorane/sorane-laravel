@@ -72,6 +72,9 @@ class TrackPageVisit
             'suspicious', 'fake', 'test', 'localhost', 'postman',
             'curl/', 'wget/', 'python-requests', 'empty',
             'clearly-fake', 'not-a-browser', 'unknown',
+            'Go-http-client', 'libwww-perl', 'Apache-HttpClient',
+            'node-fetch', 'axios/', 'okhttp', 'java/', 'ruby/',
+            'perl/', 'scrapy', 'requests/', 'http_request',
         ];
 
         foreach ($suspiciousPatterns as $pattern) {
@@ -92,6 +95,47 @@ class TrackPageVisit
             'SaaSHub',
             'Mozilla/5.0 (compatible; InternetMeasurement/1.0; +https://internet-measurement.com/)',
             'ALittle Client',
+            'Applebot',
+            'Baiduspider',
+            'BingPreview',
+            'Bytespider',
+            'CCBot',
+            'ChatGPT-User',
+            'Claude-Web',
+            'ClaudeBot',
+            'Claudebot',
+            'DataForSeoBot',
+            'DotBot',
+            'Facebot',
+            'facebookexternalhit',
+            'GPTBot',
+            'ia_archiver',
+            'ImagesiftBot',
+            'LinkedInBot',
+            'MJ12bot',
+            'PetalBot',
+            'Pinterestbot',
+            'SemrushBot',
+            'Slackbot',
+            'Slurp',
+            'TelegramBot',
+            'Twitterbot',
+            'WhatsApp',
+            'YandexBot',
+            'Amazon CloudFront',
+            'HeadlessChrome',
+            'Puppeteer',
+            'Playwright',
+            'PhantomJS',
+            'Electron',
+            'Cypress',
+            'nightwatch',
+            'ZoominfoBot',
+            'ahrefsbot',
+            'DuckDuckBot',
+            'Screaming Frog',
+            'serpstatbot',
+            'MojeekBot',
         ];
 
         foreach ($extraBotUserAgents as $botUserAgent) {
@@ -104,10 +148,30 @@ class TrackPageVisit
         $humanScore = HumanProbabilityScorer::score($request);
 
         // Skip tracking for requests that are definitely or probably bots
-        //        $botClassifications = ['definitely_bot', 'probably_bot'];
-        //        if (in_array($humanScore['classification'], $botClassifications, true)) {
-        //            return $next($request);
-        //        }
+        $botClassifications = ['definitely_bot', 'probably_bot'];
+        if (in_array($humanScore['classification'], $botClassifications, true)) {
+            return $next($request);
+        }
+
+        // Additional bot detection: Check for missing Accept-Language header
+        // Real browsers almost always send this header
+        $acceptLanguage = $request->header('Accept-Language');
+        if (! $acceptLanguage) {
+            return $next($request);
+        }
+
+        // Additional bot detection: Check for suspicious Accept headers
+        // Bots often send "*/*" or empty Accept headers
+        $acceptHeader = $request->header('Accept');
+        if ($acceptHeader === '*/*' || empty($acceptHeader)) {
+            return $next($request);
+        }
+
+        // Additional bot detection: Check for data center IP ranges (optional)
+        // This would require a GeoIP database or service, so it's commented out
+        // if ($this->isDataCenterIp($request->ip())) {
+        //     return $next($request);
+        // }
 
         // Collect visit data
         $visitData = VisitDataCollector::collect($request);

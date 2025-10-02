@@ -148,6 +148,9 @@ class HumanProbabilityScorer
             'clearly-fake', 'not-a-browser', 'unknown', 'bot', 'crawler',
             'spider', 'http-client', 'java/', 'php/', 'scripting', 'headless',
             'phantom', 'selenium', 'webdriver', 'automation',
+            'Go-http-client', 'libwww-perl', 'Apache-HttpClient', 'okhttp',
+            'node-fetch', 'axios/', 'scrapy', 'requests/', 'http_request',
+            'HeadlessChrome', 'Puppeteer', 'Playwright', 'Cypress',
         ];
 
         foreach ($suspiciousPatterns as $pattern) {
@@ -240,6 +243,35 @@ class HumanProbabilityScorer
         if ($request->header('dnt')) {
             $this->reasons[] = 'Request includes DNT header typical of browsers';
             $score += 5;
+        }
+
+        // Check for Accept-Language header (almost all browsers send this)
+        if (! $request->header('accept-language')) {
+            $this->reasons[] = 'Missing Accept-Language header (typical of bots)';
+            $score -= 40; // Strong penalty - almost all browsers send this
+        }
+
+        // Check for suspicious Accept header values
+        $acceptHeader = $request->header('accept');
+        if ($acceptHeader === '*/*') {
+            $this->reasons[] = 'Generic Accept header (*/*) typical of bots';
+            $score -= 15;
+        } elseif (empty($acceptHeader)) {
+            $this->reasons[] = 'Missing Accept header';
+            $score -= 20;
+        }
+
+        // Check for Connection header (keep-alive is typical for browsers)
+        $connection = $request->header('connection');
+        if ($connection && mb_stripos($connection, 'keep-alive') !== false) {
+            $this->reasons[] = 'Connection: keep-alive header present';
+            $score += 5;
+        }
+
+        // Check for Sec-Fetch-* headers (modern browser security feature)
+        if ($request->header('sec-fetch-site') || $request->header('sec-fetch-mode')) {
+            $this->reasons[] = 'Modern browser security headers present';
+            $score += 15;
         }
 
         return $score;

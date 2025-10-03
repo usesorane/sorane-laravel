@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'enabled' => env('SORANE_ENABLED', false),
     'key' => env('SORANE_KEY'),
 
     'errors' => [
@@ -120,7 +121,6 @@ return [
         'cache_driver' => env('SORANE_BATCH_CACHE_DRIVER', 'redis'),
         'buffer_ttl' => env('SORANE_BATCH_BUFFER_TTL', 3600), // 1 hour
         'max_buffer_size' => env('SORANE_BATCH_MAX_BUFFER_SIZE', 1000),
-        'retry_failed_items_individually' => env('SORANE_BATCH_RETRY_INDIVIDUALLY', true),
         'max_retries' => env('SORANE_BATCH_MAX_RETRIES', 3),
     ],
 ];

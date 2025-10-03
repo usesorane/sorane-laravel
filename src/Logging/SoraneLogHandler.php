@@ -23,6 +23,11 @@ class SoraneLogHandler extends AbstractProcessingHandler
      */
     protected function write(LogRecord $record): void
     {
+        // Skip if Sorane is not enabled globally
+        if (! config('sorane.enabled', false)) {
+            return;
+        }
+
         // Skip if logging is not enabled
         if (! config('sorane.logging.enabled', false)) {
             return;

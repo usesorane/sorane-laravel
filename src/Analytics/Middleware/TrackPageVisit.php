@@ -17,6 +17,10 @@ class TrackPageVisit
 {
     public function handle(Request $request, Closure $next)
     {
+        if (! config('sorane.enabled', false)) {
+            return $next($request);
+        }
+
         if (! config('sorane.website_analytics.enabled', false)) {
             return $next($request);
         }

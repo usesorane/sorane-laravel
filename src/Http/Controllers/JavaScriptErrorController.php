@@ -16,6 +16,14 @@ class JavaScriptErrorController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
+        // Check if Sorane is enabled globally
+        if (! config('sorane.enabled', false)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sorane is not enabled',
+            ], 403);
+        }
+
         // Check if JavaScript error tracking is enabled
         if (! config('sorane.javascript_errors.enabled', false)) {
             return response()->json([

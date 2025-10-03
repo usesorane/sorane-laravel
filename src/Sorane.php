@@ -19,6 +19,10 @@ class Sorane
 {
     public function report(Throwable $exception): void
     {
+        if (! config('sorane.enabled', false)) {
+            return;
+        }
+
         if (! config('sorane.errors.enabled', true)) {
             return;
         }
@@ -141,6 +145,10 @@ class Sorane
 
     public function trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true): void
     {
+        if (! config('sorane.enabled', false)) {
+            return;
+        }
+
         if (! config('sorane.events.enabled', true)) {
             return;
         }

@@ -66,12 +66,12 @@ class SoraneServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sorane');
 
         // Add middleware to web group
-        if (config('sorane.website_analytics.enabled')) {
+        if (config('sorane.enabled', false) && config('sorane.website_analytics.enabled')) {
             $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
         }
 
         // Register JavaScript error tracking route
-        if (config('sorane.javascript_errors.enabled')) {
+        if (config('sorane.enabled', false) && config('sorane.javascript_errors.enabled')) {
             $this->registerJavaScriptErrorRoute();
         }
 

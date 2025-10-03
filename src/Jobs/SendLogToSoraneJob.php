@@ -26,14 +26,8 @@ class SendLogToSoraneJob implements ShouldQueue
     {
         $payload = $this->filterPayload($this->logData);
 
-        // Add to buffer
+        // Add to buffer - batch jobs are dispatched by scheduler/command only
         $buffer->addItem('logs', $payload);
-
-        // Check if we should trigger a batch flush
-        $batchSize = config('sorane.batch.logs.size', config('sorane.batch.size', 100));
-        if ($buffer->count('logs') >= $batchSize) {
-            SendBatchToSoraneJob::dispatch('logs');
-        }
     }
 
     protected function filterPayload(array $data): array

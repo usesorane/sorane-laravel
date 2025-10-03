@@ -23,18 +23,23 @@ test('it can add items to the buffer', function (): void {
     expect($buffer->count('events'))->toBe(1);
 });
 
-test('it can retrieve items from the buffer', function (): void {
+test('it can retrieve items from the buffer and atomically removes them', function (): void {
     $buffer = new SoraneBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('events', ['event_name' => 'event2']);
     $buffer->addItem('events', ['event_name' => 'event3']);
 
+    expect($buffer->count('events'))->toBe(3);
+
     $items = $buffer->getItems('events', 2);
 
     expect($items)->toHaveCount(2);
     expect($items[0]['data']['event_name'])->toBe('event1');
     expect($items[1]['data']['event_name'])->toBe('event2');
+
+    // Items should be removed from buffer after retrieval
+    expect($buffer->count('events'))->toBe(1);
 });
 
 test('it can clear specific items by id', function (): void {
@@ -44,7 +49,9 @@ test('it can clear specific items by id', function (): void {
     $buffer->addItem('events', ['event_name' => 'event2']);
     $buffer->addItem('events', ['event_name' => 'event3']);
 
-    $items = $buffer->getItems('events', 10);
+    // First, peek at the items without removing them by reading from cache directly
+    $cacheKey = 'sorane:buffer:events';
+    $items = Cache::store('array')->get($cacheKey, []);
     $idsToRemove = [$items[0]['id'], $items[2]['id']];
 
     $buffer->clearItems('events', $idsToRemove);
@@ -97,11 +104,17 @@ test('it assigns unique ids to each item', function (): void {
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('events', ['event_name' => 'event2']);
 
+    expect($buffer->count('events'))->toBe(2);
+
     $items = $buffer->getItems('events', 10);
 
+    expect($items)->toHaveCount(2);
     expect($items[0]['id'])->not()->toBe($items[1]['id']);
     expect($items[0]['id'])->toBeString();
     expect($items[1]['id'])->toBeString();
+
+    // After retrieval, buffer should be empty
+    expect($buffer->count('events'))->toBe(0);
 });
 
 test('it includes timestamp with each item', function (): void {
@@ -109,11 +122,17 @@ test('it includes timestamp with each item', function (): void {
 
     $buffer->addItem('events', ['event_name' => 'event1']);
 
+    expect($buffer->count('events'))->toBe(1);
+
     $items = $buffer->getItems('events', 10);
 
+    expect($items)->toHaveCount(1);
     expect($items[0])->toHaveKey('timestamp');
     expect($items[0]['timestamp'])->toBeInt();
     expect($items[0]['timestamp'])->toBeLessThanOrEqual(now()->timestamp);
+
+    // After retrieval, buffer should be empty
+    expect($buffer->count('events'))->toBe(0);
 });
 
 test('it enforces max buffer size', function (): void {
@@ -132,9 +151,13 @@ test('it enforces max buffer size', function (): void {
     $items = $buffer->getItems('events', 10);
 
     // Should keep the most recent items (3, 4, 5)
+    expect($items)->toHaveCount(3);
     expect($items[0]['data']['event_name'])->toBe('event3');
     expect($items[1]['data']['event_name'])->toBe('event4');
     expect($items[2]['data']['event_name'])->toBe('event5');
+
+    // After retrieval, buffer should be empty
+    expect($buffer->count('events'))->toBe(0);
 });
 
 test('it returns available types that have items', function (): void {

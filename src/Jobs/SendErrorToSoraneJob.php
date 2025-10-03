@@ -26,14 +26,8 @@ class SendErrorToSoraneJob implements ShouldQueue
     {
         $payload = $this->filterPayload($this->errorData);
 
-        // Add to buffer
+        // Add to buffer - batch jobs are dispatched by scheduler/command only
         $buffer->addItem('errors', $payload);
-
-        // Check if we should trigger a batch flush
-        $batchSize = config('sorane.errors.batch.size', 50);
-        if ($buffer->count('errors') >= $batchSize) {
-            SendBatchToSoraneJob::dispatch('errors');
-        }
     }
 
     protected function filterPayload(array $data): array

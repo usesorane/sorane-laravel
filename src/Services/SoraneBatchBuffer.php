@@ -52,6 +52,7 @@ class SoraneBatchBuffer
 
     /**
      * Get items from the buffer for processing.
+     * Items are atomically removed from the buffer to prevent duplicate processing.
      *
      * @return array<int, array{id: string, data: array, timestamp: int}>
      */
@@ -62,7 +63,20 @@ class SoraneBatchBuffer
         return Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $limit) {
             $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
 
-            return array_slice($buffer, 0, $limit);
+            // Get items to process
+            $itemsToProcess = array_slice($buffer, 0, $limit);
+
+            // Remove these items from the buffer atomically
+            $buffer = array_slice($buffer, $limit);
+
+            // Update cache
+            if (empty($buffer)) {
+                Cache::store($this->cacheDriver)->forget($cacheKey);
+            } else {
+                Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
+            }
+
+            return $itemsToProcess;
         });
     }
 

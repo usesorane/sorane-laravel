@@ -9,7 +9,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 class SendLogToSoraneJob implements ShouldQueue
@@ -35,11 +34,6 @@ class SendLogToSoraneJob implements ShouldQueue
         if ($buffer->count('logs') >= $batchSize) {
             SendBatchToSoraneJob::dispatch('logs');
         }
-    }
-
-    public function getLogData(): array
-    {
-        return $this->logData;
     }
 
     protected function filterPayload(array $data): array

@@ -34,7 +34,6 @@ return [
         'timeout' => env('SORANE_LOGGING_TIMEOUT', 10),
         'excluded_channels' => [
             // Add channels here that should never be sent to Sorane
-            // Note: The handler uses 'single' channel for its own error logging to prevent loops
         ],
         'batch' => [
             'size' => env('SORANE_BATCH_LOGS_SIZE', 100),
@@ -117,23 +116,11 @@ return [
 
     'batch' => [
         'enabled' => env('SORANE_BATCH_ENABLED', true),
-
-        // Queue name for batch jobs
         'queue_name' => env('SORANE_BATCH_QUEUE_NAME', 'default'),
-
-        // Cache driver for buffering (redis, database, file)
         'cache_driver' => env('SORANE_BATCH_CACHE_DRIVER', 'redis'),
-
-        // Buffer TTL in seconds (how long items stay in buffer before expiring)
         'buffer_ttl' => env('SORANE_BATCH_BUFFER_TTL', 3600), // 1 hour
-
-        // Maximum buffer size to prevent memory issues
         'max_buffer_size' => env('SORANE_BATCH_MAX_BUFFER_SIZE', 1000),
-
-        // Retry failed items individually
         'retry_failed_items_individually' => env('SORANE_BATCH_RETRY_INDIVIDUALLY', true),
-
-        // Maximum retries for batch jobs
         'max_retries' => env('SORANE_BATCH_MAX_RETRIES', 3),
     ],
 ];

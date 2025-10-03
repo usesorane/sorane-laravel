@@ -36,11 +36,6 @@ class SendErrorToSoraneJob implements ShouldQueue
         }
     }
 
-    public function getErrorData(): array
-    {
-        return $this->errorData;
-    }
-
     protected function filterPayload(array $data): array
     {
         $allowedKeys = [

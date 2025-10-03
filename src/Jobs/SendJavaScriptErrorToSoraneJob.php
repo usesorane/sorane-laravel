@@ -9,7 +9,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 class SendJavaScriptErrorToSoraneJob implements ShouldQueue
@@ -35,11 +34,6 @@ class SendJavaScriptErrorToSoraneJob implements ShouldQueue
         if ($buffer->count('javascript_errors') >= $batchSize) {
             SendBatchToSoraneJob::dispatch('javascript_errors');
         }
-    }
-
-    public function getErrorData(): array
-    {
-        return $this->errorData;
     }
 
     protected function filterPayload(array $data): array

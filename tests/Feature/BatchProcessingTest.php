@@ -73,7 +73,7 @@ test('batch job sends multiple items in one request', function (): void {
     // Process batch
     $batchJob = new SendBatchToSoraneJob('events', 10);
     $batchJob->handle(
-        app(\Sorane\Laravel\Services\SoraneApiClient::class),
+        app(Sorane\Laravel\Services\SoraneApiClient::class),
         $buffer
     );
 
@@ -98,7 +98,7 @@ test('different types maintain separate buffers', function (): void {
     $eventJob = new SendEventToSoraneJob(['event_name' => 'test']);
     $eventJob->handle($buffer);
 
-    $logJob = new \Sorane\Laravel\Jobs\SendLogToSoraneJob(['message' => 'test log']);
+    $logJob = new Sorane\Laravel\Jobs\SendLogToSoraneJob(['message' => 'test log']);
     $logJob->handle($buffer);
 
     expect($buffer->count('events'))->toBe(1);
@@ -124,7 +124,7 @@ test('batch job respects max items limit', function (): void {
     // Process batch with limit of 5
     $batchJob = new SendBatchToSoraneJob('events', 5);
     $batchJob->handle(
-        app(\Sorane\Laravel\Services\SoraneApiClient::class),
+        app(Sorane\Laravel\Services\SoraneApiClient::class),
         $buffer
     );
 
@@ -146,7 +146,7 @@ test('empty buffer does not make api calls', function (): void {
 
     $batchJob = new SendBatchToSoraneJob('events', 10);
     $batchJob->handle(
-        app(\Sorane\Laravel\Services\SoraneApiClient::class),
+        app(Sorane\Laravel\Services\SoraneApiClient::class),
         $buffer
     );
 

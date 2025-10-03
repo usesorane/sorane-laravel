@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Sorane\Laravel\Services;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class SoraneApiClient

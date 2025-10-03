@@ -8,11 +8,128 @@ use Illuminate\Console\Command;
 
 class SoraneTestCommand extends Command
 {
-    public $signature = 'sorane:test';
+    public $signature = 'sorane:test
+                        {--feature= : Test specific feature(s) - comma-separated or use "all"}
+                        {--all : Test all features}';
 
-    public $description = 'This command will send a test message to Sorane';
+    public $description = 'Validate Sorane configuration and optionally test specific features';
 
     public function handle(): int
+    {
+        $feature = $this->option('feature');
+        $all = $this->option('all');
+
+        // If --all flag or feature=all, test everything
+        if ($all || $feature === 'all') {
+            return $this->testAllFeatures();
+        }
+
+        // If specific feature(s) requested
+        if ($feature) {
+            // Support comma-separated features
+            if (str_contains($feature, ',')) {
+                return $this->testMultipleFeatures(explode(',', $feature));
+            }
+
+            return $this->testSpecificFeature($feature);
+        }
+
+        // Otherwise, run the general configuration validation
+        return $this->validateConfiguration();
+    }
+
+    protected function testAllFeatures(): int
+    {
+        $this->info('🧪 Testing All Sorane Features...');
+        $this->newLine();
+
+        $features = ['errors', 'events', 'logging', 'javascript_errors', 'analytics'];
+        $results = [];
+
+        foreach ($features as $feature) {
+            $this->line("Running test for: <fg=cyan>{$feature}</>");
+            $exitCode = $this->testSpecificFeature($feature, false);
+            $results[$feature] = $exitCode === self::SUCCESS;
+            $this->newLine();
+        }
+
+        // Summary
+        $this->info('📊 Test Summary:');
+        $this->table(
+            ['Feature', 'Result'],
+            collect($results)->map(function ($passed, $feature) {
+                return [
+                    ucfirst(str_replace('_', ' ', $feature)),
+                    $passed ? '<fg=green>✓ Passed</>' : '<fg=red>✗ Failed</>',
+                ];
+            })->values()->toArray()
+        );
+
+        $allPassed = collect($results)->every(fn ($passed) => $passed);
+
+        return $allPassed ? self::SUCCESS : self::FAILURE;
+    }
+
+    protected function testMultipleFeatures(array $features): int
+    {
+        $features = array_map('trim', $features);
+
+        $this->info('🧪 Testing Multiple Features: '.implode(', ', $features));
+        $this->newLine();
+
+        $results = [];
+
+        foreach ($features as $feature) {
+            $exitCode = $this->testSpecificFeature($feature, false);
+            $results[$feature] = $exitCode === self::SUCCESS;
+            $this->newLine();
+        }
+
+        // Summary
+        $this->info('📊 Test Summary:');
+        $this->table(
+            ['Feature', 'Result'],
+            collect($results)->map(function ($passed, $feature) {
+                return [
+                    ucfirst(str_replace('_', ' ', $feature)),
+                    $passed ? '<fg=green>✓ Passed</>' : '<fg=red>✗ Failed</>',
+                ];
+            })->values()->toArray()
+        );
+
+        $allPassed = collect($results)->every(fn ($passed) => $passed);
+
+        return $allPassed ? self::SUCCESS : self::FAILURE;
+    }
+
+    protected function testSpecificFeature(string $feature, bool $showHeader = true): int
+    {
+        $featureCommands = [
+            'errors' => 'sorane:test-errors',
+            'events' => 'sorane:test-events',
+            'logging' => 'sorane:test-logging',
+            'javascript_errors' => 'sorane:test-javascript-errors',
+            'analytics' => 'sorane:test-analytics',
+        ];
+
+        if (! isset($featureCommands[$feature])) {
+            $this->error("❌ Unknown feature: {$feature}");
+            $this->info('💡 Available features: '.implode(', ', array_keys($featureCommands)));
+
+            return self::FAILURE;
+        }
+
+        $command = $featureCommands[$feature];
+
+        if ($showHeader) {
+            $this->info("Running feature test: {$feature}");
+            $this->newLine();
+        }
+
+        return $this->call($command);
+    }
+
+    protected function validateConfiguration(): int
     {
         $this->info('🔍 Testing Sorane Configuration...');
         $this->newLine();
@@ -115,10 +232,26 @@ class SoraneTestCommand extends Command
         $this->info('✅ Sorane configuration is valid!');
         $this->newLine();
 
-        $this->info('📚 Next steps:');
-        $this->line('   • Run <fg=yellow>php artisan sorane:test-events</> to test event tracking');
-        $this->line('   • Run <fg=yellow>php artisan sorane:test-logging</> to test logging');
-        $this->line('   • Run <fg=yellow>php artisan sorane:test-javascript-errors</> for JS setup');
+        $this->info('📚 Test specific features:');
+        $this->line('   • <fg=yellow>php artisan sorane:test --feature=errors</> - Test error reporting');
+        $this->line('   • <fg=yellow>php artisan sorane:test --feature=events</> - Test event tracking');
+        $this->line('   • <fg=yellow>php artisan sorane:test --feature=logging</> - Test logging');
+        $this->line('   • <fg=yellow>php artisan sorane:test --feature=javascript_errors</> - JavaScript setup');
+        $this->line('   • <fg=yellow>php artisan sorane:test --feature=analytics</> - Analytics setup');
+        $this->newLine();
+
+        $this->info('Test multiple features:');
+        $this->line('   • <fg=yellow>php artisan sorane:test --feature=errors,events</> - Test multiple');
+        $this->line('   • <fg=yellow>php artisan sorane:test --all</> - Test all features');
+        $this->line('   • <fg=yellow>php artisan sorane:test --feature=all</> - Test all features');
+        $this->newLine();
+
+        $this->info('Or use the specific commands:');
+        $this->line('   • <fg=yellow>php artisan sorane:test-errors</>');
+        $this->line('   • <fg=yellow>php artisan sorane:test-events</>');
+        $this->line('   • <fg=yellow>php artisan sorane:test-logging</>');
+        $this->line('   • <fg=yellow>php artisan sorane:test-javascript-errors</>');
+        $this->line('   • <fg=yellow>php artisan sorane:test-analytics</>');
 
         return self::SUCCESS;
     }

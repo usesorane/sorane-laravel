@@ -11,7 +11,7 @@ use Sorane\Laravel\Services\SoraneBatchBuffer;
 class SoraneWorkCommand extends Command
 {
     protected $signature = 'sorane:work
-                            {--type= : Specific type to process (events, logs, page_visits, javascript_errors)}';
+                            {--type= : Specific type to process (errors, events, logs, page_visits, javascript_errors)}';
 
     protected $description = 'Process pending Sorane batches and send to the API';
 
@@ -21,7 +21,7 @@ class SoraneWorkCommand extends Command
 
         $types = $specificType
             ? [$specificType]
-            : ['events', 'logs', 'page_visits', 'javascript_errors'];
+            : ['errors', 'events', 'logs', 'page_visits', 'javascript_errors'];
 
         $sentCount = 0;
 

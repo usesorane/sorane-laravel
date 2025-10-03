@@ -15,10 +15,9 @@ class DataSanitizer
     public static function sanitizeForSerialization(mixed $data): mixed
     {
         if (is_array($data)) {
-            $sanitized = [];
-            foreach ($data as $key => $value) {
-                $sanitized[$key] = self::sanitizeForSerialization($value);
-            }
+            $sanitized = array_map(function ($value) {
+                return self::sanitizeForSerialization($value);
+            }, $data);
 
             return $sanitized;
         }

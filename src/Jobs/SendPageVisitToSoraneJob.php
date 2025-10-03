@@ -9,7 +9,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 class SendPageVisitToSoraneJob implements ShouldQueue
@@ -35,11 +34,6 @@ class SendPageVisitToSoraneJob implements ShouldQueue
         if ($buffer->count('page_visits') >= $batchSize) {
             SendBatchToSoraneJob::dispatch('page_visits');
         }
-    }
-
-    public function getVisitData(): array
-    {
-        return $this->visitData;
     }
 
     protected function filterPayload(array $data): array

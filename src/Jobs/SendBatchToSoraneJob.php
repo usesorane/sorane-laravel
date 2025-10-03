@@ -10,6 +10,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
+use RuntimeException;
 use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 use Throwable;
@@ -53,7 +55,7 @@ class SendBatchToSoraneJob implements ShouldQueue
                 'logs' => $client->sendLogBatch($payloads),
                 'page_visits' => $client->sendPageVisitBatch($payloads),
                 'javascript_errors' => $client->sendJavaScriptErrorBatch($payloads),
-                default => throw new \InvalidArgumentException("Unknown batch type: {$this->type}"),
+                default => throw new InvalidArgumentException("Unknown batch type: {$this->type}"),
             };
 
             // Handle response
@@ -61,21 +63,21 @@ class SendBatchToSoraneJob implements ShouldQueue
                 // Clear successfully sent items
                 $buffer->clearItems($this->type, $itemIds);
 
-                Log::info("Sorane batch sent successfully", [
+                Log::info('Sorane batch sent successfully', [
                     'type' => $this->type,
                     'count' => count($items),
                     'processed' => $result['processed'] ?? count($items),
                 ]);
             } else {
                 // Log error but don't throw - let retry logic handle it
-                Log::warning("Sorane batch API returned failure", [
+                Log::warning('Sorane batch API returned failure', [
                     'type' => $this->type,
                     'count' => count($items),
                     'message' => $result['message'] ?? 'Unknown error',
                 ]);
 
                 // Re-throw to trigger retry
-                throw new \RuntimeException($result['message'] ?? 'Batch API returned failure');
+                throw new RuntimeException($result['message'] ?? 'Batch API returned failure');
             }
 
             // Handle partial failures if API reports them
@@ -83,7 +85,7 @@ class SendBatchToSoraneJob implements ShouldQueue
                 $this->retryFailedItemsIndividually($result['failed'], $items);
             }
         } catch (Throwable $e) {
-            Log::error("Failed to send batch to Sorane", [
+            Log::error('Failed to send batch to Sorane', [
                 'type' => $this->type,
                 'count' => count($items),
                 'error' => $e->getMessage(),
@@ -135,7 +137,7 @@ class SendBatchToSoraneJob implements ShouldQueue
      */
     protected function retryAllItemsIndividually(array $items): void
     {
-        Log::warning("Retrying batch items individually", [
+        Log::warning('Retrying batch items individually', [
             'type' => $this->type,
             'count' => count($items),
         ]);

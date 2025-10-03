@@ -3,7 +3,7 @@
 /**
  * Sorane JavaScript Error Tracking
  * Version: 1.0.0
- * 
+ *
  * This script automatically captures JavaScript errors and sends them to Sorane.
  * It includes support for:
  * - Global error handling (window.onerror)
@@ -30,7 +30,6 @@
         return;
     }
 
-    // Breadcrumb storage
     let breadcrumbs = [];
 
     // Error deduplication
@@ -74,9 +73,9 @@
      */
     function shouldIgnoreError(message) {
         if (!message) return true;
-        
+
         const messageStr = String(message);
-        
+
         return config.ignoredErrors.some(pattern => {
             return messageStr.toLowerCase().includes(pattern.toLowerCase());
         });
@@ -176,7 +175,7 @@
      */
     window.addEventListener('unhandledrejection', function(event) {
         const reason = event.reason;
-        
+
         let message = 'Unhandled Promise Rejection';
         let stack = '';
         let type = 'UnhandledRejection';
@@ -295,7 +294,7 @@
 
         XMLHttpRequest.prototype.send = function() {
             const xhr = this;
-            
+
             xhr.addEventListener('load', function() {
                 addBreadcrumb('http', 'XHR completed', {
                     method: xhr._sorane_method,
@@ -320,7 +319,7 @@
      */
     if (window.fetch) {
         const originalFetch = window.fetch;
-        
+
         window.fetch = function() {
             const url = arguments[0];
             const options = arguments[1] || {};

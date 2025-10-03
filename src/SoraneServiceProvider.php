@@ -7,11 +7,13 @@ namespace Sorane\Laravel;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Sorane\Laravel\Analytics\Middleware\TrackPageVisit;
-use Sorane\Laravel\Commands\SoraneWorkCommand;
+use Sorane\Laravel\Commands\SoraneAnalyticsTestCommand;
+use Sorane\Laravel\Commands\SoraneErrorTestCommand;
 use Sorane\Laravel\Commands\SoraneEventTestCommand;
 use Sorane\Laravel\Commands\SoraneJavaScriptErrorTestCommand;
 use Sorane\Laravel\Commands\SoraneLogTestCommand;
 use Sorane\Laravel\Commands\SoraneTestCommand;
+use Sorane\Laravel\Commands\SoraneWorkCommand;
 use Sorane\Laravel\Events\EventTracker;
 use Sorane\Laravel\Logging\SoraneLogDriver;
 
@@ -52,9 +54,11 @@ class SoraneServiceProvider extends ServiceProvider
             // Register commands
             $this->commands([
                 SoraneTestCommand::class,
+                SoraneAnalyticsTestCommand::class,
+                SoraneErrorTestCommand::class,
                 SoraneEventTestCommand::class,
-                SoraneLogTestCommand::class,
                 SoraneJavaScriptErrorTestCommand::class,
+                SoraneLogTestCommand::class,
                 SoraneWorkCommand::class,
             ]);
         }

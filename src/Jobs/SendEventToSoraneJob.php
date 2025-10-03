@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Sorane\Laravel\Jobs;
 
-use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 class SendEventToSoraneJob extends BaseSoraneJob
@@ -27,11 +26,6 @@ class SendEventToSoraneJob extends BaseSoraneJob
         if ($buffer->count('events') >= $batchSize) {
             SendBatchToSoraneJob::dispatch('events');
         }
-    }
-
-    public function getEventData(): array
-    {
-        return $this->eventData;
     }
 
     protected function getConfigPath(): string

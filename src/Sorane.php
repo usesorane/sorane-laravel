@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Sorane\Laravel\Analytics\FingerprintGenerator;
 use Sorane\Laravel\Events\EventTracker;
-use Sorane\Laravel\Jobs\SendEventToSoraneJob;
 use Sorane\Laravel\Jobs\SendErrorToSoraneJob;
+use Sorane\Laravel\Jobs\SendEventToSoraneJob;
 use Sorane\Laravel\Utilities\DataSanitizer;
 use Throwable;
 

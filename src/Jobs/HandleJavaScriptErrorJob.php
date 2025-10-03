@@ -11,7 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
-class SendJavaScriptErrorToSoraneJob implements ShouldQueue
+class HandleJavaScriptErrorJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Queue;
 use Sorane\Laravel\Events\EventTracker;
 use Sorane\Laravel\Facades\Sorane;
-use Sorane\Laravel\Jobs\SendEventToSoraneJob;
+use Sorane\Laravel\Jobs\HandleEventJob;
 
 test('it validates event names correctly', function (): void {
     // Valid event names
@@ -33,7 +33,7 @@ test('it tracks events successfully with validation', function (): void {
 
     Sorane::trackEvent('user_registered', ['source' => 'test']);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['event_name'] === 'user_registered'
@@ -46,7 +46,7 @@ test('it tracks events without validation when disabled', function (): void {
 
     Sorane::trackEvent('Invalid Event Name!', ['test' => true], null, false);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['event_name'] === 'Invalid Event Name!';
@@ -60,7 +60,7 @@ test('it includes user agent hash in event data', function (): void {
 
     Sorane::trackEvent('test_event', []);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return isset($eventData['user_agent_hash'])
@@ -73,7 +73,7 @@ test('it includes session id hash in event data', function (): void {
 
     Sorane::trackEvent('test_event', []);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return isset($eventData['session_id_hash'])
@@ -125,7 +125,7 @@ test('it includes authenticated user id when available', function (): void {
 
     Sorane::trackEvent('test_event', []);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return isset($eventData['user']['id'])
@@ -138,7 +138,7 @@ test('it allows explicit user id override', function (): void {
 
     Sorane::trackEvent('test_event', [], 456);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['user']['id'] === 456;

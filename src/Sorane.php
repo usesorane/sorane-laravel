@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Sorane\Laravel\Analytics\FingerprintGenerator;
 use Sorane\Laravel\Events\EventTracker;
-use Sorane\Laravel\Jobs\SendErrorToSoraneJob;
-use Sorane\Laravel\Jobs\SendEventToSoraneJob;
+use Sorane\Laravel\Jobs\HandleErrorJob;
+use Sorane\Laravel\Jobs\HandleEventJob;
 use Sorane\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
@@ -133,9 +133,9 @@ class Sorane
         try {
             // Dispatch job to send error data
             if (config('sorane.errors.queue', true)) {
-                SendErrorToSoraneJob::dispatch($data);
+                HandleErrorJob::dispatch($data);
             } else {
-                SendErrorToSoraneJob::dispatchSync($data);
+                HandleErrorJob::dispatchSync($data);
             }
         } catch (Throwable $e) {
             // Log the failure but don't rethrow to avoid infinite loops
@@ -172,9 +172,9 @@ class Sorane
 
         // Dispatch job to send event data
         if (config('sorane.events.queue', true)) {
-            SendEventToSoraneJob::dispatch($eventData);
+            HandleEventJob::dispatch($eventData);
         } else {
-            SendEventToSoraneJob::dispatchSync($eventData);
+            HandleEventJob::dispatchSync($eventData);
         }
     }
 

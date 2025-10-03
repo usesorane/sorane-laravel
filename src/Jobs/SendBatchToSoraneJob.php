@@ -17,7 +17,7 @@ use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 use Throwable;
 
-class SendBatchToSoraneJob implements ShouldQueue, ShouldBeUnique
+class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

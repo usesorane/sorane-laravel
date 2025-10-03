@@ -11,7 +11,7 @@ use Jaybizzle\CrawlerDetect\CrawlerDetect;
 use Sorane\Laravel\Analytics\Contracts\RequestFilter;
 use Sorane\Laravel\Analytics\HumanProbabilityScorer;
 use Sorane\Laravel\Analytics\VisitDataCollector;
-use Sorane\Laravel\Jobs\SendPageVisitToSoraneJob;
+use Sorane\Laravel\Jobs\HandlePageVisitJob;
 
 class TrackPageVisit
 {
@@ -199,9 +199,9 @@ class TrackPageVisit
 
             // Dispatch job to send visit data
             if (config('sorane.website_analytics.queue', true)) {
-                SendPageVisitToSoraneJob::dispatch($visitData);
+                HandlePageVisitJob::dispatch($visitData);
             } else {
-                SendPageVisitToSoraneJob::dispatchSync($visitData);
+                HandlePageVisitJob::dispatchSync($visitData);
             }
         }
 

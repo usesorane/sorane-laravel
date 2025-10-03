@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
-use Sorane\Laravel\Jobs\SendPageVisitToSoraneJob;
+use Sorane\Laravel\Jobs\HandlePageVisitJob;
 
 test('it tracks page visits for normal requests', function (): void {
     Bus::fake();
@@ -16,7 +16,7 @@ test('it tracks page visits for normal requests', function (): void {
 
     $response->assertStatus(200);
 
-    Bus::assertDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertDispatched(HandlePageVisitJob::class);
 });
 
 test('it does not track crawler visits', function (): void {
@@ -26,7 +26,7 @@ test('it does not track crawler visits', function (): void {
         'User-Agent' => 'Googlebot/2.1 (+http://www.google.com/bot.html)',
     ])->get('/');
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it does not track requests without user agent', function (): void {
@@ -34,7 +34,7 @@ test('it does not track requests without user agent', function (): void {
 
     $response = $this->get('/');
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it respects excluded paths configuration', function (): void {
@@ -46,13 +46,13 @@ test('it respects excluded paths configuration', function (): void {
         'User-Agent' => 'Mozilla/5.0',
     ])->get('/admin/dashboard');
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 
     $this->withHeaders([
         'User-Agent' => 'Mozilla/5.0',
     ])->get('/api/users');
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it tracks allowed paths', function (): void {
@@ -65,7 +65,7 @@ test('it tracks allowed paths', function (): void {
         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0',
     ])->get('/products');
 
-    Bus::assertDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertDispatched(HandlePageVisitJob::class);
 });
 
 test('it filters suspicious user agents', function (): void {
@@ -87,7 +87,7 @@ test('it filters suspicious user agents', function (): void {
         $this->withHeaders(['User-Agent' => $agent])->get('/');
     }
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it includes human probability score', function (): void {
@@ -100,7 +100,7 @@ test('it includes human probability score', function (): void {
         'Accept-Language' => 'en-US',
     ])->get('/');
 
-    Bus::assertDispatched(SendPageVisitToSoraneJob::class, function ($job): bool {
+    Bus::assertDispatched(HandlePageVisitJob::class, function ($job): bool {
         return isset($job->getVisitData()['human_probability_score'])
             && isset($job->getVisitData()['human_probability_reasons']);
     });
@@ -118,11 +118,11 @@ test('it throttles duplicate visits', function (): void {
 
     // First request
     $this->withHeaders($headers)->get('/test-page');
-    Bus::assertDispatchedTimes(SendPageVisitToSoraneJob::class, 1);
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
 
     // Second request within throttle window
     $this->withHeaders($headers)->get('/test-page');
-    Bus::assertDispatchedTimes(SendPageVisitToSoraneJob::class, 1); // Still just 1
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1); // Still just 1
 });
 
 test('it does not track when analytics is disabled', function (): void {
@@ -138,7 +138,7 @@ test('it does not track when analytics is disabled', function (): void {
         'User-Agent' => 'Mozilla/5.0',
     ])->get('/');
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it skips internal requests', function (): void {
@@ -149,7 +149,7 @@ test('it skips internal requests', function (): void {
         'X-Client-Mode' => 'passive',
     ])->get('/');
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it filters requests without Accept-Language header', function (): void {
@@ -172,7 +172,7 @@ test('it filters requests without Accept-Language header', function (): void {
         return response('OK');
     });
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it filters requests with generic Accept header', function (): void {
@@ -185,7 +185,7 @@ test('it filters requests with generic Accept header', function (): void {
         'Accept-Language' => 'en-US',
     ])->get('/');
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it tracks requests with proper browser headers', function (): void {
@@ -199,7 +199,7 @@ test('it tracks requests with proper browser headers', function (): void {
         'Accept-Encoding' => 'gzip, deflate, br',
     ])->get('/');
 
-    Bus::assertDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertDispatched(HandlePageVisitJob::class);
 });
 
 test('it filters AI bot user agents', function (): void {
@@ -216,7 +216,7 @@ test('it filters AI bot user agents', function (): void {
         $this->withHeaders(['User-Agent' => $bot])->get('/');
     }
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
 test('it filters headless browser user agents', function (): void {
@@ -232,5 +232,5 @@ test('it filters headless browser user agents', function (): void {
         $this->withHeaders(['User-Agent' => $browser])->get('/');
     }
 
-    Bus::assertNotDispatched(SendPageVisitToSoraneJob::class);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
 });

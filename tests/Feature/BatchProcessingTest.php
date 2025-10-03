@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Sorane\Laravel\Jobs\SendBatchToSoraneJob;
-use Sorane\Laravel\Jobs\SendEventToSoraneJob;
+use Sorane\Laravel\Jobs\HandleEventJob;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 beforeEach(function (): void {
@@ -27,7 +27,7 @@ test('events are added to buffer', function (): void {
 
     $buffer = app(SoraneBatchBuffer::class);
 
-    $job = new SendEventToSoraneJob(['event_name' => 'test_event']);
+    $job = new HandleEventJob(['event_name' => 'test_event']);
     $job->handle($buffer);
 
     expect($buffer->count('events'))->toBe(1);
@@ -40,14 +40,14 @@ test('events are added to buffer without auto-dispatch', function (): void {
     $buffer = app(SoraneBatchBuffer::class);
 
     // Add first item
-    $job1 = new SendEventToSoraneJob(['event_name' => 'event1']);
+    $job1 = new HandleEventJob(['event_name' => 'event1']);
     $job1->handle($buffer);
 
     expect($buffer->count('events'))->toBe(1);
     Queue::assertNothingPushed();
 
     // Add second item - no auto-dispatch
-    $job2 = new SendEventToSoraneJob(['event_name' => 'event2']);
+    $job2 = new HandleEventJob(['event_name' => 'event2']);
     $job2->handle($buffer);
 
     expect($buffer->count('events'))->toBe(2);
@@ -95,10 +95,10 @@ test('batch job sends multiple items in one request', function (): void {
 test('different types maintain separate buffers', function (): void {
     $buffer = app(SoraneBatchBuffer::class);
 
-    $eventJob = new SendEventToSoraneJob(['event_name' => 'test']);
+    $eventJob = new HandleEventJob(['event_name' => 'test']);
     $eventJob->handle($buffer);
 
-    $logJob = new Sorane\Laravel\Jobs\SendLogToSoraneJob(['message' => 'test log']);
+    $logJob = new Sorane\Laravel\Jobs\HandleLogJob(['message' => 'test log']);
     $logJob->handle($buffer);
 
     expect($buffer->count('events'))->toBe(1);

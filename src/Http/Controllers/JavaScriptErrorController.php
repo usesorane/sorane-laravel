@@ -8,7 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
-use Sorane\Laravel\Jobs\SendJavaScriptErrorToSoraneJob;
+use Sorane\Laravel\Jobs\HandleJavaScriptErrorJob;
 use Sorane\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
@@ -110,9 +110,9 @@ class JavaScriptErrorController extends Controller
         try {
             // Send via queue by default, or synchronously if queue is disabled
             if (config('sorane.javascript_errors.queue', true)) {
-                SendJavaScriptErrorToSoraneJob::dispatch($errorData);
+                HandleJavaScriptErrorJob::dispatch($errorData);
             } else {
-                SendJavaScriptErrorToSoraneJob::dispatchSync($errorData);
+                HandleJavaScriptErrorJob::dispatchSync($errorData);
             }
 
             return response()->json([

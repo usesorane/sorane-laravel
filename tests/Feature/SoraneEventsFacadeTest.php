@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Queue;
 use Sorane\Laravel\Facades\SoraneEvents;
-use Sorane\Laravel\Jobs\SendEventToSoraneJob;
+use Sorane\Laravel\Jobs\HandleEventJob;
 
 test('SoraneEvents facade is available', function (): void {
     expect(class_exists(SoraneEvents::class))->toBeTrue();
@@ -21,7 +21,7 @@ test('product added to cart helper works', function (): void {
         category: 'Electronics'
     );
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['event_name'] === 'product_added_to_cart'
@@ -44,7 +44,7 @@ test('sale helper works', function (): void {
         currency: 'USD'
     );
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['event_name'] === 'sale'
@@ -62,7 +62,7 @@ test('user registered helper works', function (): void {
         additionalProperties: ['source' => 'website']
     );
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['event_name'] === 'user_registered'
@@ -76,7 +76,7 @@ test('user logged in helper works', function (): void {
 
     SoraneEvents::userLoggedIn(userId: 456);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['event_name'] === 'user_logged_in'
@@ -89,7 +89,7 @@ test('page view helper works', function (): void {
 
     SoraneEvents::pageView('Pricing Page', ['variant' => 'A']);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['event_name'] === 'page_view'
@@ -108,7 +108,7 @@ test('custom event helper works with valid name', function (): void {
 
     SoraneEvents::custom('newsletter_signup', ['source' => 'footer']);
 
-    Queue::assertPushed(SendEventToSoraneJob::class, function ($job): bool {
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
 
         return $eventData['event_name'] === 'newsletter_signup'
@@ -122,5 +122,5 @@ test('custom unsafe helper bypasses validation', function (): void {
     // Should not throw exception
     SoraneEvents::customUnsafe('Invalid Event Name!', ['test' => true]);
 
-    Queue::assertPushed(SendEventToSoraneJob::class);
+    Queue::assertPushed(HandleEventJob::class);
 });

@@ -7,7 +7,7 @@ namespace Sorane\Laravel\Logging;
 use Illuminate\Support\Facades\Log;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\LogRecord;
-use Sorane\Laravel\Jobs\SendLogToSoraneJob;
+use Sorane\Laravel\Jobs\HandleLogJob;
 use Sorane\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
@@ -57,9 +57,9 @@ class SoraneLogHandler extends AbstractProcessingHandler
         try {
             // Send via queue by default, or synchronously if queue is disabled
             if (config('sorane.logging.queue', true)) {
-                SendLogToSoraneJob::dispatch($logData);
+                HandleLogJob::dispatch($logData);
             } else {
-                SendLogToSoraneJob::dispatchSync($logData);
+                HandleLogJob::dispatchSync($logData);
             }
         } catch (Throwable $e) {
             // Prevent infinite loops by using a different logger

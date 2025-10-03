@@ -6,7 +6,7 @@ namespace Sorane\Laravel\Jobs;
 
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
-class SendEventToSoraneJob extends BaseSoraneJob
+class HandleEventJob extends BaseSoraneJob
 {
     public function __construct(
         protected array $eventData

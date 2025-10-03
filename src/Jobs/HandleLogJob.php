@@ -11,48 +11,34 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
-class SendErrorToSoraneJob implements ShouldQueue
+class HandleLogJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        protected array $errorData
+        protected array $logData
     ) {
         // Optionally assign queue name from config
-        $this->onQueue(config('sorane.errors.queue_name', 'default'));
+        $this->onQueue(config('sorane.logging.queue_name', 'default'));
     }
 
     public function handle(SoraneBatchBuffer $buffer): void
     {
-        $payload = $this->filterPayload($this->errorData);
+        $payload = $this->filterPayload($this->logData);
 
         // Add to buffer - batch jobs are dispatched by scheduler/command only
-        $buffer->addItem('errors', $payload);
+        $buffer->addItem('logs', $payload);
     }
 
     protected function filterPayload(array $data): array
     {
         $allowedKeys = [
-            'for',
+            'level',
             'message',
-            'file',
-            'line',
-            'type',
-            'environment',
-            'trace',
-            'headers',
             'context',
-            'highlight_line',
-            'user',
-            'time',
-            'url',
-            'method',
-            'php_version',
-            'laravel_version',
-            'is_console',
-            'console_command',
-            'console_arguments',
-            'console_options',
+            'channel',
+            'timestamp',
+            'extra',
         ];
 
         return collect($data)

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
-use Sorane\Laravel\Jobs\SendLogToSoraneJob;
+use Sorane\Laravel\Jobs\HandleLogJob;
 
 beforeEach(function (): void {
     Bus::fake();
@@ -24,7 +24,7 @@ test('it sends logs to sorane channel', function (): void {
         'context' => 'test',
     ]);
 
-    Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         return $job->getLogData()['level'] === 'error'
             && $job->getLogData()['message'] === 'Test error message'
             && $job->getLogData()['context']['context'] === 'test';
@@ -34,7 +34,7 @@ test('it sends logs to sorane channel', function (): void {
 test('it includes environment information', function (): void {
     Log::channel('sorane')->error('Test');
 
-    Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         return isset($job->getLogData()['extra']['environment'])
             && isset($job->getLogData()['extra']['laravel_version'])
             && isset($job->getLogData()['extra']['php_version']);
@@ -46,7 +46,7 @@ test('it respects enabled configuration', function (): void {
 
     Log::channel('sorane')->error('Test');
 
-    Bus::assertNotDispatched(SendLogToSoraneJob::class);
+    Bus::assertNotDispatched(HandleLogJob::class);
 });
 
 test('it respects excluded channels', function (): void {
@@ -60,7 +60,7 @@ test('it respects excluded channels', function (): void {
 
     $logger->error('Test');
 
-    Bus::assertNotDispatched(SendLogToSoraneJob::class);
+    Bus::assertNotDispatched(HandleLogJob::class);
 });
 
 test('it handles different log levels', function (): void {
@@ -70,7 +70,7 @@ test('it handles different log levels', function (): void {
         Log::channel('sorane')->{$level}("Test {$level} message");
     }
 
-    Bus::assertDispatchedTimes(SendLogToSoraneJob::class, count($levels));
+    Bus::assertDispatchedTimes(HandleLogJob::class, count($levels));
 });
 
 test('it sanitizes context with closures', function (): void {
@@ -79,7 +79,7 @@ test('it sanitizes context with closures', function (): void {
         'safe' => 'value',
     ]);
 
-    Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         return $job->getLogData()['context']['closure'] === '[Closure]'
             && $job->getLogData()['context']['safe'] === 'value';
     });
@@ -88,7 +88,7 @@ test('it sanitizes context with closures', function (): void {
 test('it formats timestamp correctly', function (): void {
     Log::channel('sorane')->error('Test');
 
-    Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         // ISO 8601 format
         return preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/', $job->getLogData()['timestamp']) === 1;
     });
@@ -97,7 +97,7 @@ test('it formats timestamp correctly', function (): void {
 test('it includes channel name', function (): void {
     Log::channel('sorane')->error('Test');
 
-    Bus::assertDispatched(SendLogToSoraneJob::class, function ($job): bool {
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         return $job->getLogData()['channel'] === 'sorane';
     });
 });

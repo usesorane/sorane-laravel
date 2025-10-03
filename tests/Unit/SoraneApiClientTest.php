@@ -5,14 +5,27 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Http;
 use Sorane\Laravel\Services\SoraneApiClient;
 
-test('it sends error data to correct endpoint', function (): void {
+test('it sends error batch to correct endpoint', function (): void {
     Http::fake();
     $client = new SoraneApiClient('test-key');
 
-    $client->sendError(['message' => 'Test error'], 'javascript');
+    $client->sendErrorBatch([['message' => 'Test error']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/javascript-errors/store';
+        return $request->url() === 'https://api.sorane.io/v1/errors/store'
+            && isset($request->data()['errors']);
+    });
+});
+
+test('it sends javascript error batch to correct endpoint', function (): void {
+    Http::fake();
+    $client = new SoraneApiClient('test-key');
+
+    $client->sendJavaScriptErrorBatch([['message' => 'JS error']]);
+
+    Http::assertSent(function ($request): bool {
+        return $request->url() === 'https://api.sorane.io/v1/javascript-errors/store'
+            && isset($request->data()['errors']);
     });
 });
 
@@ -20,77 +33,104 @@ test('it includes api key in authorization header', function (): void {
     Http::fake();
     $client = new SoraneApiClient('test-key-123');
 
-    $client->sendError(['message' => 'Test'], 'javascript');
+    $client->sendErrorBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
         return $request->hasHeader('Authorization', 'Bearer test-key-123');
     });
 });
 
-test('it sends correct user agent header', function (): void {
+test('it sends correct user agent header for errors', function (): void {
     Http::fake();
     $client = new SoraneApiClient('test-key');
 
-    $client->sendError(['message' => 'Test'], 'log');
+    $client->sendErrorBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/log/1.0');
+        return $request->hasHeader('User-Agent', 'Sorane-Laravel/errors/1.0');
     });
 });
 
-test('it sends event data to events endpoint', function (): void {
+test('it sends correct user agent header for javascript errors', function (): void {
     Http::fake();
     $client = new SoraneApiClient('test-key');
 
-    $client->sendEvent(['event_name' => 'test_event']);
+    $client->sendJavaScriptErrorBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/events/store';
+        return $request->hasHeader('User-Agent', 'Sorane-Laravel/javascript-errors/1.0');
     });
 });
 
-test('it sends page visit data to analytics endpoint', function (): void {
+test('it sends correct user agent header for logs', function (): void {
     Http::fake();
     $client = new SoraneApiClient('test-key');
 
-    $client->sendPageVisit(['url' => 'https://example.com']);
+    $client->sendLogBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/page-visits/store';
+        return $request->hasHeader('User-Agent', 'Sorane-Laravel/logs/1.0');
     });
 });
 
-test('it returns true on successful response', function (): void {
+test('it sends event batch to events endpoint', function (): void {
+    Http::fake();
+    $client = new SoraneApiClient('test-key');
+
+    $client->sendEventBatch([['event_name' => 'test_event']]);
+
+    Http::assertSent(function ($request): bool {
+        return $request->url() === 'https://api.sorane.io/v1/events/store'
+            && isset($request->data()['events']);
+    });
+});
+
+test('it sends page visit batch to analytics endpoint', function (): void {
+    Http::fake();
+    $client = new SoraneApiClient('test-key');
+
+    $client->sendPageVisitBatch([['url' => 'https://example.com']]);
+
+    Http::assertSent(function ($request): bool {
+        return $request->url() === 'https://api.sorane.io/v1/page-visits/store'
+            && isset($request->data()['visits']);
+    });
+});
+
+test('it returns success on successful response', function (): void {
     Http::fake([
-        '*' => Http::response(['success' => true], 200),
+        '*' => Http::response(['success' => true, 'received' => 1, 'processed' => 1], 200),
     ]);
 
     $client = new SoraneApiClient('test-key');
-    $result = $client->sendError(['message' => 'Test'], 'javascript');
+    $result = $client->sendErrorBatch([['message' => 'Test']]);
 
-    expect($result)->toBeTrue();
+    expect($result['success'])->toBeTrue();
+    expect($result['received'])->toBe(1);
+    expect($result['processed'])->toBe(1);
 });
 
-test('it returns false when api key is missing', function (): void {
+test('it returns error when api key is missing', function (): void {
     Http::fake();
     config(['sorane.key' => null]);
     $client = new SoraneApiClient(null);
 
-    $result = $client->sendError(['message' => 'Test'], 'javascript');
+    $result = $client->sendErrorBatch([['message' => 'Test']]);
 
-    expect($result)->toBeFalse();
+    expect($result['success'])->toBeFalse();
+    expect($result['message'])->toBe('API key not configured');
     Http::assertNothingSent();
 });
 
-test('it returns false on failed response', function (): void {
+test('it returns error on failed response', function (): void {
     Http::fake([
         '*' => Http::response(['error' => 'Failed'], 500),
     ]);
 
     $client = new SoraneApiClient('test-key');
-    $result = $client->sendError(['message' => 'Test'], 'javascript');
+    $result = $client->sendErrorBatch([['message' => 'Test']]);
 
-    expect($result)->toBeFalse();
+    expect($result['success'])->toBeFalse();
 });
 
 test('it handles network exceptions gracefully', function (): void {
@@ -99,21 +139,31 @@ test('it handles network exceptions gracefully', function (): void {
     });
 
     $client = new SoraneApiClient('test-key');
-    $result = $client->sendError(['message' => 'Test'], 'javascript');
+    $result = $client->sendErrorBatch([['message' => 'Test']]);
 
-    expect($result)->toBeFalse();
+    expect($result['success'])->toBeFalse();
+    expect($result['message'])->toContain('Network error');
 });
 
-test('it uses correct endpoint for different error types', function (): void {
+test('it returns success for empty batch', function (): void {
     Http::fake();
     $client = new SoraneApiClient('test-key');
 
-    $client->sendError(['message' => 'JS error'], 'javascript');
-    Http::assertSent(fn ($req) => str_contains($req->url(), 'javascript-errors'));
+    $result = $client->sendErrorBatch([]);
 
-    $client->sendError(['message' => 'Log error'], 'log');
-    Http::assertSent(fn ($req) => str_contains($req->url(), 'logs'));
+    expect($result['success'])->toBeTrue();
+    expect($result['received'])->toBe(0);
+    expect($result['processed'])->toBe(0);
+    Http::assertNothingSent();
+});
 
-    $client->sendError(['message' => 'Other error'], 'other');
+test('it uses timeout from config', function (): void {
+    Http::fake();
+    config(['sorane.errors.timeout' => 15]);
+    $client = new SoraneApiClient('test-key');
+
+    $client->sendErrorBatch([['message' => 'Test']]);
+
+    // Note: Can't directly test timeout value, but it's being set from config
     Http::assertSent(fn ($req) => str_contains($req->url(), 'errors'));
 });

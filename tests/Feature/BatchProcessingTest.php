@@ -83,7 +83,7 @@ test('batch job sends multiple items in one request', function (): void {
     Http::assertSent(function ($request): bool {
         $body = json_decode($request->body(), true);
 
-        return str_contains($request->url(), '/events/store-batch')
+        return str_contains($request->url(), '/events/store')
             && isset($body['events'])
             && count($body['events']) === 3;
     });

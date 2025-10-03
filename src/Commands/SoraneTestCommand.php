@@ -39,7 +39,7 @@ class SoraneTestCommand extends Command
 
         // Check each feature configuration
         $features = [
-            'error_reporting' => 'Error Reporting',
+            'errors' => 'Error Reporting',
             'events' => 'Event Tracking',
             'website_analytics' => 'Website Analytics',
             'javascript_errors' => 'JavaScript Errors',
@@ -89,7 +89,7 @@ class SoraneTestCommand extends Command
         if ($enabledFeatures->isEmpty()) {
             $this->warn('⚠️  All features are currently disabled.');
             $this->info('💡 Enable features in your .env file:');
-            $this->line('   SORANE_ERROR_REPORTING_ENABLED=true');
+            $this->line('   SORANE_ERRORS_ENABLED=true');
             $this->line('   SORANE_EVENTS_ENABLED=true');
             $this->line('   SORANE_WEBSITE_ANALYTICS_ENABLED=true');
             $this->line('   SORANE_JAVASCRIPT_ERRORS_ENABLED=true');
@@ -98,14 +98,15 @@ class SoraneTestCommand extends Command
         }
 
         // Additional config details
-        if (! empty($config['error_reporting'])) {
+        if (! empty($config['errors'])) {
             $this->line('⚙️  <fg=cyan>Error Reporting Settings:</>');
             $this->table(
                 ['Setting', 'Value'],
                 [
-                    ['Timeout', ($config['error_reporting']['timeout'] ?? 5).' seconds'],
-                    ['Max File Size', number_format($config['error_reporting']['max_file_size'] ?? 1048576).' bytes'],
-                    ['Max Trace Length', number_format($config['error_reporting']['max_trace_length'] ?? 5000).' chars'],
+                    ['Timeout', ($config['errors']['timeout'] ?? 10).' seconds'],
+                    ['Max File Size', number_format($config['errors']['max_file_size'] ?? 1048576).' bytes'],
+                    ['Max Trace Length', number_format($config['errors']['max_trace_length'] ?? 5000).' chars'],
+                    ['Batch Size', $config['errors']['batch']['size'] ?? 50],
                 ]
             );
             $this->newLine();

@@ -5,28 +5,39 @@ declare(strict_types=1);
 return [
     'key' => env('SORANE_KEY'),
 
-    'error_reporting' => [
-        'enabled' => env('SORANE_ERROR_REPORTING_ENABLED', true),
-        'queue' => env('SORANE_ERROR_REPORTING_QUEUE', false),
-        'queue_name' => env('SORANE_ERROR_REPORTING_QUEUE_NAME', 'default'),
-        'timeout' => env('SORANE_ERROR_REPORTING_TIMEOUT', 5),
-        'max_file_size' => env('SORANE_ERROR_REPORTING_MAX_FILE_SIZE', 1048576), // 1MB
-        'max_trace_length' => env('SORANE_ERROR_REPORTING_MAX_TRACE_LENGTH', 5000),
+    'errors' => [
+        'enabled' => env('SORANE_ERRORS_ENABLED', true),
+        'queue' => env('SORANE_ERRORS_QUEUE', true),
+        'queue_name' => env('SORANE_ERRORS_QUEUE_NAME', 'default'),
+        'timeout' => env('SORANE_ERRORS_TIMEOUT', 10),
+        'max_file_size' => env('SORANE_ERRORS_MAX_FILE_SIZE', 1048576), // 1MB
+        'max_trace_length' => env('SORANE_ERRORS_MAX_TRACE_LENGTH', 5000),
+        'batch' => [
+            'size' => env('SORANE_BATCH_ERRORS_SIZE', 50),
+        ],
     ],
 
     'events' => [
         'enabled' => env('SORANE_EVENTS_ENABLED', true),
         'queue' => env('SORANE_EVENTS_QUEUE', true),
         'queue_name' => env('SORANE_EVENTS_QUEUE_NAME', 'default'),
+        'timeout' => env('SORANE_EVENTS_TIMEOUT', 10),
+        'batch' => [
+            'size' => env('SORANE_BATCH_EVENTS_SIZE', 100),
+        ],
     ],
 
     'logging' => [
         'enabled' => env('SORANE_LOGGING_ENABLED', false),
         'queue' => env('SORANE_LOGGING_QUEUE', true),
         'queue_name' => env('SORANE_LOGGING_QUEUE_NAME', 'default'),
+        'timeout' => env('SORANE_LOGGING_TIMEOUT', 10),
         'excluded_channels' => [
             // Add channels here that should never be sent to Sorane
             // Note: The handler uses 'single' channel for its own error logging to prevent loops
+        ],
+        'batch' => [
+            'size' => env('SORANE_BATCH_LOGS_SIZE', 100),
         ],
     ],
 
@@ -34,6 +45,7 @@ return [
         'enabled' => env('SORANE_WEBSITE_ANALYTICS_ENABLED', false),
         'queue' => env('SORANE_WEBSITE_ANALYTICS_QUEUE', true),
         'queue_name' => env('SORANE_WEBSITE_ANALYTICS_QUEUE_NAME', 'default'),
+        'timeout' => env('SORANE_WEBSITE_ANALYTICS_TIMEOUT', 10),
         'excluded_paths' => [
             'horizon',
             'nova',
@@ -55,12 +67,16 @@ return [
         'debug' => [
             'preserve_user_agent' => env('SORANE_WEBSITE_ANALYTICS_DEBUG_PRESERVE_UA', false),
         ],
+        'batch' => [
+            'size' => env('SORANE_BATCH_VISITS_SIZE', 100),
+        ],
     ],
 
     'javascript_errors' => [
         'enabled' => env('SORANE_JAVASCRIPT_ERRORS_ENABLED', false),
         'queue' => env('SORANE_JAVASCRIPT_ERRORS_QUEUE', true),
         'queue_name' => env('SORANE_JAVASCRIPT_ERRORS_QUEUE_NAME', 'default'),
+        'timeout' => env('SORANE_JAVASCRIPT_ERRORS_TIMEOUT', 10),
         'sample_rate' => env('SORANE_JAVASCRIPT_ERRORS_SAMPLE_RATE', 1.0), // 1.0 = 100%, 0.1 = 10%
         'ignored_errors' => [
             // Browser quirks and unfixable issues
@@ -94,9 +110,14 @@ return [
         ],
         'capture_console_errors' => env('SORANE_JAVASCRIPT_CAPTURE_CONSOLE_ERRORS', false),
         'max_breadcrumbs' => env('SORANE_JAVASCRIPT_MAX_BREADCRUMBS', 20),
+        'batch' => [
+            'size' => env('SORANE_BATCH_JS_ERRORS_SIZE', 50),
+        ],
     ],
 
     'batch' => [
+        'enabled' => env('SORANE_BATCH_ENABLED', true),
+
         // Queue name for batch jobs
         'queue_name' => env('SORANE_BATCH_QUEUE_NAME', 'default'),
 
@@ -109,27 +130,10 @@ return [
         // Maximum buffer size to prevent memory issues
         'max_buffer_size' => env('SORANE_BATCH_MAX_BUFFER_SIZE', 1000),
 
-        // Default batch size (items per batch)
-        'size' => env('SORANE_BATCH_SIZE', 100),
-
         // Retry failed items individually
         'retry_failed_items_individually' => env('SORANE_BATCH_RETRY_INDIVIDUALLY', true),
 
         // Maximum retries for batch jobs
         'max_retries' => env('SORANE_BATCH_MAX_RETRIES', 3),
-
-        // Per-type batch size settings (optional overrides)
-        'events' => [
-            'size' => env('SORANE_BATCH_EVENTS_SIZE', 100),
-        ],
-        'logs' => [
-            'size' => env('SORANE_BATCH_LOGS_SIZE', 50),
-        ],
-        'page_visits' => [
-            'size' => env('SORANE_BATCH_VISITS_SIZE', 200),
-        ],
-        'javascript_errors' => [
-            'size' => env('SORANE_BATCH_JS_ERRORS_SIZE', 50),
-        ],
     ],
 ];

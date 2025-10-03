@@ -48,10 +48,11 @@ class SendBatchToSoraneJob implements ShouldQueue
 
             // Send batch to Sorane API
             $result = match ($this->type) {
+                'errors' => $client->sendErrorBatch($payloads),
                 'events' => $client->sendEventBatch($payloads),
                 'logs' => $client->sendLogBatch($payloads),
                 'page_visits' => $client->sendPageVisitBatch($payloads),
-                'javascript_errors' => $client->sendErrorBatch($payloads, 'javascript'),
+                'javascript_errors' => $client->sendJavaScriptErrorBatch($payloads),
                 default => throw new \InvalidArgumentException("Unknown batch type: {$this->type}"),
             };
 
@@ -150,6 +151,7 @@ class SendBatchToSoraneJob implements ShouldQueue
     protected function dispatchIndividualJob(array $data): void
     {
         $jobClass = match ($this->type) {
+            'errors' => SendErrorToSoraneJob::class,
             'events' => SendEventToSoraneJob::class,
             'logs' => SendLogToSoraneJob::class,
             'page_visits' => SendPageVisitToSoraneJob::class,
@@ -168,8 +170,16 @@ class SendBatchToSoraneJob implements ShouldQueue
      */
     protected function getMaxBatchSize(): int
     {
-        $typeConfig = config("sorane.batch.{$this->type}.size");
+        // Map type to config path
+        $configPath = match ($this->type) {
+            'errors' => 'sorane.errors.batch.size',
+            'events' => 'sorane.events.batch.size',
+            'logs' => 'sorane.logging.batch.size',
+            'page_visits' => 'sorane.website_analytics.batch.size',
+            'javascript_errors' => 'sorane.javascript_errors.batch.size',
+            default => null,
+        };
 
-        return $typeConfig ?? config('sorane.batch.size', 100);
+        return $configPath ? config($configPath, 100) : 100;
     }
 }

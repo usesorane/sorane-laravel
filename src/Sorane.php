@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Request;
 use Sorane\Laravel\Analytics\FingerprintGenerator;
 use Sorane\Laravel\Events\EventTracker;
 use Sorane\Laravel\Jobs\SendEventToSoraneJob;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Sorane\Laravel\Jobs\SendErrorToSoraneJob;
 use Sorane\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
@@ -19,7 +19,7 @@ class Sorane
 {
     public function report(Throwable $exception): void
     {
-        if (! config('sorane.error_reporting.enabled', true)) {
+        if (! config('sorane.errors.enabled', true)) {
             return;
         }
 
@@ -66,7 +66,7 @@ class Sorane
         $context = null;
         $highlightLine = null;
 
-        $maxFileSize = config('sorane.error_reporting.max_file_size', 1048576);
+        $maxFileSize = config('sorane.errors.max_file_size', 1048576);
         if (is_readable($file) && filesize($file) < $maxFileSize) {
             $lines = file($file);
             if (is_array($lines)) {
@@ -94,7 +94,7 @@ class Sorane
 
         // Trace
         $trace = $exception->getTraceAsString();
-        $maxTraceLength = config('sorane.error_reporting.max_trace_length', 5000);
+        $maxTraceLength = config('sorane.errors.max_trace_length', 5000);
 
         if (mb_strlen($trace) > $maxTraceLength) {
             $trace = mb_substr($trace, 0, $maxTraceLength).'... (truncated)';
@@ -127,8 +127,12 @@ class Sorane
         ];
 
         try {
-            $client = app(SoraneApiClient::class);
-            $client->sendErrorReport($data);
+            // Dispatch job to send error data
+            if (config('sorane.errors.queue', true)) {
+                SendErrorToSoraneJob::dispatch($data);
+            } else {
+                SendErrorToSoraneJob::dispatchSync($data);
+            }
         } catch (Throwable $e) {
             // Log the failure but don't rethrow to avoid infinite loops
             Log::warning('Failed to send error report to Sorane: '.$e->getMessage());

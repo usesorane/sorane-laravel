@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Sorane\Laravel\Jobs\SendBatchToSoraneJob;
 use Sorane\Laravel\Jobs\HandleEventJob;
+use Sorane\Laravel\Jobs\SendBatchToSoraneJob;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 
 beforeEach(function (): void {
@@ -157,7 +157,7 @@ test('empty buffer does not make api calls', function (): void {
 
 test('failed batch items are re-added to buffer for retry', function (): void {
     // Override the Http fake from beforeEach with a failing response
-    Http::swap(new \Illuminate\Http\Client\Factory);
+    Http::swap(new Illuminate\Http\Client\Factory);
     Http::fake([
         '*' => Http::response([
             'success' => false,

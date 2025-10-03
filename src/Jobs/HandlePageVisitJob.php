@@ -11,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
+use Throwable;
 
 class HandlePageVisitJob implements ShouldQueue
 {
@@ -29,6 +30,21 @@ class HandlePageVisitJob implements ShouldQueue
 
         // Add to buffer - batch jobs are dispatched by scheduler/command only
         $buffer->addItem('page_visits', $payload);
+    }
+
+    /**
+     * Handle job failure after all retries exhausted.
+     * Logs to 'single' channel to prevent infinite error loops (never logs to Sorane).
+     */
+    public function failed(Throwable $exception): void
+    {
+        // Always use 'single' channel - it exists in all Laravel apps
+        // and is never the Sorane channel, preventing infinite loops
+        Log::channel('single')
+            ->critical('Sorane job failed after all retries', [
+                'job_class' => static::class,
+                'exception' => $exception->getMessage(),
+            ]);
     }
 
     protected function filterPayload(array $data): array
@@ -63,19 +79,5 @@ class HandlePageVisitJob implements ShouldQueue
         return collect($data)
             ->only($keys)
             ->toArray();
-    }
-
-    /**
-     * Handle job failure after all retries exhausted.
-     * Logs to single channel (not Sorane) to prevent infinite error loops.
-     */
-    public function failed(Throwable $exception): void
-    {
-        Log::channel('single')
-            ->critical('Sorane job failed after all retries', [
-                'job_class' => static::class,
-                'exception' => $exception->getMessage(),
-                'trace' => $exception->getTraceAsString(),
-            ]);
     }
 }

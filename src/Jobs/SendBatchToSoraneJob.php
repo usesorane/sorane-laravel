@@ -77,21 +77,23 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
             // Re-add items to buffer for batch retry (items are never sent individually)
             $this->reAddItemsToBuffer($buffer, $items);
 
+            // Rethrow to trigger job retry
             throw $e;
         }
     }
 
     /**
      * Handle job failure after all retries exhausted.
-     * Logs to single channel (not Sorane) to prevent infinite error loops.
+     * Logs to 'single' channel to prevent infinite error loops (never logs to Sorane).
      */
     public function failed(Throwable $exception): void
     {
+        // Always use 'single' channel - it exists in all Laravel apps
+        // and is never the Sorane channel, preventing infinite loops
         Log::channel('single')
             ->critical('Sorane batch job failed after all retries', [
                 'type' => $this->type,
                 'exception' => $exception->getMessage(),
-                'trace' => $exception->getTraceAsString(),
             ]);
     }
 

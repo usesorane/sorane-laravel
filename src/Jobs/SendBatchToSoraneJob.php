@@ -25,11 +25,6 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
 
     public int $backoff = 60;
 
-    /**
-     * The number of seconds after which the job's unique lock will be released.
-     */
-    public int $uniqueFor = 60;
-
     public function __construct(
         public string $type,
         public ?int $maxItems = null
@@ -73,42 +68,31 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
 
             // Handle response
             if ($result['success'] ?? false) {
-                Log::info('Sorane batch sent successfully', [
-                    'type' => $this->type,
-                    'count' => count($items),
-                    'processed' => $result['processed'] ?? count($items),
-                ]);
+                // Good
             } else {
-                // Log error and re-add items to buffer for retry
-                Log::warning('Sorane batch API returned failure', [
-                    'type' => $this->type,
-                    'count' => count($items),
-                    'message' => $result['message'] ?? 'Unknown error',
-                ]);
-
-                // Re-add items to buffer for retry
-                $this->reAddItemsToBuffer($buffer, $items);
-
-                // Re-throw to trigger retry
+                // Throw to trigger retry
                 throw new RuntimeException($result['message'] ?? 'Batch API returned failure');
             }
-        } catch (RuntimeException $e) {
-            // RuntimeException from failed API response - items already re-added above
-            throw $e;
         } catch (Throwable $e) {
-            // Unexpected error (network, timeout, etc) - re-add items
-            Log::error('Failed to send batch to Sorane', [
-                'type' => $this->type,
-                'count' => count($items),
-                'error' => $e->getMessage(),
-                'attempt' => $this->attempts(),
-            ]);
-
             // Re-add items to buffer for batch retry (items are never sent individually)
             $this->reAddItemsToBuffer($buffer, $items);
 
             throw $e;
         }
+    }
+
+    /**
+     * Handle job failure after all retries exhausted.
+     * Logs to single channel (not Sorane) to prevent infinite error loops.
+     */
+    public function failed(Throwable $exception): void
+    {
+        Log::channel('single')
+            ->critical('Sorane batch job failed after all retries', [
+                'type' => $this->type,
+                'exception' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
+            ]);
     }
 
     /**

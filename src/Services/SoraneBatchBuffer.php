@@ -6,10 +6,11 @@ namespace Sorane\Laravel\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Psr\SimpleCache\InvalidArgumentException;
 
 class SoraneBatchBuffer
 {
-    protected const BUFFER_PREFIX = 'sorane:buffer:';
+    protected const string BUFFER_PREFIX = 'sorane:buffer:';
 
     protected string $cacheDriver;
 
@@ -55,6 +56,8 @@ class SoraneBatchBuffer
      * Items are atomically removed from the buffer to prevent duplicate processing.
      *
      * @return array<int, array{id: string, data: array, timestamp: int}>
+     *
+     * @throws InvalidArgumentException
      */
     public function getItems(string $type, int $limit): array
     {
@@ -84,6 +87,8 @@ class SoraneBatchBuffer
      * Clear specific items from the buffer by their IDs.
      *
      * @param  array<int, string>  $ids
+     *
+     * @throws InvalidArgumentException
      */
     public function clearItems(string $type, array $ids): void
     {

@@ -9,6 +9,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Base class for all Sorane jobs providing common functionality.
@@ -49,5 +51,19 @@ abstract class BaseSoraneJob implements ShouldQueue
     {
         $queueName = config($this->getConfigPath().'.queue_name', 'default');
         $this->onQueue($queueName);
+    }
+
+    /**
+     * Handle job failure after all retries exhausted.
+     * Logs to single channel (not Sorane) to prevent infinite error loops.
+     */
+    public function failed(Throwable $exception): void
+    {
+        Log::channel('single')
+            ->critical('Sorane job failed after all retries', [
+                'job_class' => static::class,
+                'exception' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
+            ]);
     }
 }

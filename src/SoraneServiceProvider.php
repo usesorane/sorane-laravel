@@ -102,7 +102,7 @@ class SoraneServiceProvider extends ServiceProvider
     {
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
             $schedule->command('sorane:work')
-                ->everySeconds(60)
+                ->everyMinute()
                 ->withoutOverlapping()
                 ->runInBackground();
         });

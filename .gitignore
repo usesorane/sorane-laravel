@@ -19,5 +19,6 @@ composer.lock
 /.fleet
 /.idea
 /.vscode
+/.specs
 .junie/mcp/mcp.json
 .mcp.json

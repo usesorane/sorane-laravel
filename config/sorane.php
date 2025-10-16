@@ -11,11 +11,6 @@ return [
         'queue' => env('SORANE_ERRORS_QUEUE', true),
         'queue_name' => env('SORANE_ERRORS_QUEUE_NAME', 'default'),
         'timeout' => env('SORANE_ERRORS_TIMEOUT', 10),
-        'max_file_size' => env('SORANE_ERRORS_MAX_FILE_SIZE', 1048576), // 1MB
-        'max_trace_length' => env('SORANE_ERRORS_MAX_TRACE_LENGTH', 5000),
-        'batch' => [
-            'size' => env('SORANE_BATCH_ERRORS_SIZE', 50),
-        ],
     ],
 
     'events' => [
@@ -23,9 +18,6 @@ return [
         'queue' => env('SORANE_EVENTS_QUEUE', true),
         'queue_name' => env('SORANE_EVENTS_QUEUE_NAME', 'default'),
         'timeout' => env('SORANE_EVENTS_TIMEOUT', 10),
-        'batch' => [
-            'size' => env('SORANE_BATCH_EVENTS_SIZE', 100),
-        ],
     ],
 
     'logging' => [
@@ -35,9 +27,6 @@ return [
         'timeout' => env('SORANE_LOGGING_TIMEOUT', 10),
         'excluded_channels' => [
             // Add channels here that should never be sent to Sorane
-        ],
-        'batch' => [
-            'size' => env('SORANE_BATCH_LOGS_SIZE', 100),
         ],
     ],
 
@@ -66,9 +55,6 @@ return [
         'throttle_seconds' => env('SORANE_WEBSITE_ANALYTICS_THROTTLE_SECONDS', 30),
         'debug' => [
             'preserve_user_agent' => env('SORANE_WEBSITE_ANALYTICS_DEBUG_PRESERVE_UA', false),
-        ],
-        'batch' => [
-            'size' => env('SORANE_BATCH_VISITS_SIZE', 100),
         ],
     ],
 
@@ -110,17 +96,12 @@ return [
         ],
         'capture_console_errors' => env('SORANE_JAVASCRIPT_CAPTURE_CONSOLE_ERRORS', false),
         'max_breadcrumbs' => env('SORANE_JAVASCRIPT_MAX_BREADCRUMBS', 20),
-        'batch' => [
-            'size' => env('SORANE_BATCH_JS_ERRORS_SIZE', 50),
-        ],
     ],
 
     'batch' => [
-        'enabled' => env('SORANE_BATCH_ENABLED', true),
         'queue_name' => env('SORANE_BATCH_QUEUE_NAME', 'default'),
         'cache_driver' => env('SORANE_BATCH_CACHE_DRIVER', 'redis'),
         'buffer_ttl' => env('SORANE_BATCH_BUFFER_TTL', 3600), // 1 hour
-        'max_buffer_size' => env('SORANE_BATCH_MAX_BUFFER_SIZE', 1000),
-        'max_retries' => env('SORANE_BATCH_MAX_RETRIES', 3),
+        'max_buffer_size' => env('SORANE_BATCH_MAX_BUFFER_SIZE', 5000),
     ],
 ];

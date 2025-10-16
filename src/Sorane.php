@@ -70,7 +70,7 @@ class Sorane
         $context = null;
         $highlightLine = null;
 
-        $maxFileSize = config('sorane.errors.max_file_size', 1048576);
+        $maxFileSize = 1048576; // 1MB
         if (is_readable($file) && filesize($file) < $maxFileSize) {
             $lines = file($file);
             if (is_array($lines)) {
@@ -98,7 +98,7 @@ class Sorane
 
         // Trace
         $trace = $exception->getTraceAsString();
-        $maxTraceLength = config('sorane.errors.max_trace_length', 5000);
+        $maxTraceLength = 5000;
 
         if (mb_strlen($trace) > $maxTraceLength) {
             $trace = mb_substr($trace, 0, $maxTraceLength).'... (truncated)';

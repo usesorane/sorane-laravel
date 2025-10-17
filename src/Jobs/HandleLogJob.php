@@ -9,8 +9,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
+use Sorane\Laravel\Support\InternalLogger;
 use Throwable;
 
 class HandleLogJob implements ShouldQueue
@@ -38,13 +38,10 @@ class HandleLogJob implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
-        // Use 'sorane_internal' channel
-        // to prevent infinite loops by bypassing Sorane's own capture
-        Log::channel('sorane_internal')
-            ->critical('Sorane job failed after all retries', [
-                'job_class' => static::class,
-                'exception' => $exception->getMessage(),
-            ]);
+        InternalLogger::critical('Sorane job failed after all retries', [
+            'job_class' => static::class,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 
     protected function filterPayload(array $data): array

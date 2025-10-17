@@ -10,12 +10,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
 use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 use Sorane\Laravel\Services\SoranePauseManager;
+use Sorane\Laravel\Support\InternalLogger;
 use Throwable;
 
 class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
@@ -334,11 +334,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
      */
     protected function logError(string $message, array $context = []): void
     {
-        try {
-            Log::channel('sorane_internal')->error($message, $context);
-        } catch (Throwable) {
-            // Silent failure if channel not configured
-        }
+        InternalLogger::error($message, $context);
     }
 
     /**
@@ -348,11 +344,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
      */
     protected function logWarning(string $message, array $context = []): void
     {
-        try {
-            Log::channel('sorane_internal')->warning($message, $context);
-        } catch (Throwable) {
-            // Silent failure if channel not configured
-        }
+        InternalLogger::warning($message, $context);
     }
 
     /**
@@ -362,11 +354,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
      */
     protected function logInfo(string $message, array $context = []): void
     {
-        try {
-            Log::channel('sorane_internal')->info($message, $context);
-        } catch (Throwable) {
-            // Silent failure if channel not configured
-        }
+        InternalLogger::info($message, $context);
     }
 
     /**
@@ -376,10 +364,6 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
      */
     protected function logCritical(string $message, array $context = []): void
     {
-        try {
-            Log::channel('sorane_internal')->critical($message, $context);
-        } catch (Throwable) {
-            // Silent failure if channel not configured
-        }
+        InternalLogger::critical($message, $context);
     }
 }

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Sorane\Laravel\Logging;
 
-use Illuminate\Support\Facades\Log;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\LogRecord;
 use Sorane\Laravel\Jobs\HandleLogJob;
+use Sorane\Laravel\Support\InternalLogger;
 use Sorane\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
@@ -81,11 +81,7 @@ class SoraneLogHandler extends AbstractProcessingHandler
             }
         } catch (Throwable $e) {
             // Prevent infinite loops by using sorane_internal channel
-            try {
-                Log::channel('sorane_internal')->warning('Failed to queue log to Sorane: '.$e->getMessage());
-            } catch (Throwable) {
-                // Silent failure if channel not configured
-            }
+            InternalLogger::warning('Failed to queue log to Sorane: '.$e->getMessage());
         }
     }
 }

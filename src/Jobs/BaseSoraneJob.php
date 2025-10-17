@@ -9,7 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Sorane\Laravel\Support\InternalLogger;
 use Throwable;
 
 /**
@@ -37,15 +37,10 @@ abstract class BaseSoraneJob implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
-        try {
-            Log::channel('sorane_internal')
-                ->critical('Sorane job failed after all retries', [
-                    'job_class' => static::class,
-                    'exception' => $exception->getMessage(),
-                ]);
-        } catch (Throwable) {
-            // Silent failure if channel not configured
-        }
+        InternalLogger::critical('Sorane job failed after all retries', [
+            'job_class' => static::class,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 
     /**

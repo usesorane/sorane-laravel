@@ -105,4 +105,11 @@ return [
         'max_buffer_size' => env('SORANE_BATCH_MAX_BUFFER_SIZE', 5000),
         'max_batch_size' => env('SORANE_BATCH_MAX_BATCH_SIZE', 1000),
     ],
+
+    'internal_logging' => [
+        'enabled' => env('SORANE_INTERNAL_LOGGING_ENABLED', true),
+        'level' => env('SORANE_INTERNAL_LOG_LEVEL', 'debug'),
+        'days' => env('SORANE_INTERNAL_LOG_DAYS', 14),
+        'stderr_fallback' => env('SORANE_INTERNAL_STDERR_FALLBACK', true),
+    ],
 ];

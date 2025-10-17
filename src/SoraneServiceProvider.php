@@ -28,6 +28,15 @@ class SoraneServiceProvider extends ServiceProvider
             'sorane'
         );
 
+        // Auto-register sorane_internal log channel
+        // This ensures zero-config setup for internal diagnostics
+        $this->app['config']->set('logging.channels.sorane_internal', [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sorane-internal.log'),
+            'level' => config('sorane.internal_logging.level', 'debug'),
+            'days' => config('sorane.internal_logging.days', 14),
+        ]);
+
         // Register Sorane as singleton
         $this->app->singleton(Sorane::class, function () {
             return new Sorane;

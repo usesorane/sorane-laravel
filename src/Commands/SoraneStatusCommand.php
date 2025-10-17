@@ -54,7 +54,7 @@ class SoraneStatusCommand extends Command
                 'paused' => $pauseManager->isFeaturePaused($feature),
                 'paused_until' => $pauseData['paused_until'],
                 'reason' => $pauseData['reason'],
-                'time_remaining_seconds' => max(0, Carbon::parse($pauseData['paused_until'])->diffInSeconds(Carbon::now(), false)),
+                'time_remaining_seconds' => max(0, Carbon::now()->diffInSeconds(Carbon::parse($pauseData['paused_until']), false)),
             ] : null;
         }
 
@@ -83,7 +83,7 @@ class SoraneStatusCommand extends Command
                     'paused' => $isGloballyPaused,
                     'paused_until' => $globalPause['paused_until'],
                     'reason' => $globalPause['reason'],
-                    'time_remaining_seconds' => max(0, Carbon::parse($globalPause['paused_until'])->diffInSeconds(Carbon::now(), false)),
+                    'time_remaining_seconds' => max(0, Carbon::now()->diffInSeconds(Carbon::parse($globalPause['paused_until']), false)),
                 ] : null,
                 'features' => $featurePauses,
             ],

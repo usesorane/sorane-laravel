@@ -22,3 +22,4 @@ composer.lock
 /.specs
 .junie/mcp/mcp.json
 .mcp.json
+/specs

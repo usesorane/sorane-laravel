@@ -104,12 +104,30 @@ class Sorane
             $trace = mb_substr($trace, 0, $maxTraceLength).'... (truncated)';
         }
 
+        // Truncate fields to stay within API 5MB request limit
+        $message = $exception->getMessage();
+        if (mb_strlen($message) > 10000) {
+            $message = mb_substr($message, 0, 10000).'... (truncated)';
+        }
+
+        if ($file && mb_strlen($file) > 500) {
+            $file = mb_substr($file, -500); // Keep last 500 chars (end of path)
+        }
+
+        if ($url && mb_strlen($url) > 2000) {
+            $url = mb_substr($url, 0, 2000).'... (truncated)';
+        }
+
+        if ($headers && mb_strlen($headers) > 5000) {
+            $headers = mb_substr($headers, 0, 5000).'... (truncated)';
+        }
+
         $time = Carbon::now()->toDateTimeString();
 
         // Data array to send
         $data = [
             'for' => 'sorane',
-            'message' => $exception->getMessage(),
+            'message' => $message,
             'file' => $file,
             'line' => $line,
             'type' => get_class($exception),

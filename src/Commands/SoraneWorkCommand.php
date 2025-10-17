@@ -7,6 +7,7 @@ namespace Sorane\Laravel\Commands;
 use Illuminate\Console\Command;
 use Sorane\Laravel\Jobs\SendBatchToSoraneJob;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
+use Sorane\Laravel\Services\SoranePauseManager;
 
 class SoraneWorkCommand extends Command
 {
@@ -15,8 +16,16 @@ class SoraneWorkCommand extends Command
 
     protected $description = 'Process pending Sorane batches and send to the API';
 
-    public function handle(SoraneBatchBuffer $buffer): int
+    public function handle(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager): int
     {
+        // Check global pause first
+        if ($pauseManager->isGloballyPaused()) {
+            $pauseData = $pauseManager->getGlobalPause();
+            $this->warn('Sorane is globally paused until '.$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
+
+            return self::SUCCESS;
+        }
+
         $specificType = $this->option('type');
 
         $types = $specificType
@@ -26,6 +35,14 @@ class SoraneWorkCommand extends Command
         $sentCount = 0;
 
         foreach ($types as $type) {
+            // Check feature-specific pause
+            if ($pauseManager->isFeaturePaused($type)) {
+                $pauseData = $pauseManager->getFeaturePause($type);
+                $this->warn("Feature '{$type}' is paused until ".$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
+
+                continue;
+            }
+
             $count = $buffer->count($type);
 
             if ($count === 0) {

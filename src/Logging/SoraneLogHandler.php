@@ -41,17 +41,35 @@ class SoraneLogHandler extends AbstractProcessingHandler
         }
 
         // Prepare log data for Sorane API
+        // Limit field sizes to stay within API 5MB request limit
+        $message = $record->message;
+        if (mb_strlen($message) > 50000) {
+            $message = mb_substr($message, 0, 50000).'... (truncated)';
+        }
+
+        $context = DataSanitizer::sanitizeForSerialization($record->context);
+        $contextJson = json_encode($context);
+        if (mb_strlen($contextJson) > 51200) { // 50KB
+            $context = ['_truncated' => 'Context exceeded 50KB limit and was removed'];
+        }
+
+        $extra = DataSanitizer::sanitizeForSerialization(array_merge($record->extra, [
+            'environment' => config('app.env'),
+            'laravel_version' => app()->version(),
+            'php_version' => phpversion(),
+        ]));
+        $extraJson = json_encode($extra);
+        if (mb_strlen($extraJson) > 10240) { // 10KB
+            $extra = ['_truncated' => 'Extra data exceeded 10KB limit and was removed'];
+        }
+
         $logData = [
             'level' => mb_strtolower($record->level->name),
-            'message' => $record->message,
-            'context' => DataSanitizer::sanitizeForSerialization($record->context),
+            'message' => $message,
+            'context' => $context,
             'channel' => $channelName,
             'timestamp' => $record->datetime->format('c'), // ISO 8601 format
-            'extra' => DataSanitizer::sanitizeForSerialization(array_merge($record->extra, [
-                'environment' => config('app.env'),
-                'laravel_version' => app()->version(),
-                'php_version' => phpversion(),
-            ])),
+            'extra' => $extra,
         ];
 
         try {
@@ -62,8 +80,12 @@ class SoraneLogHandler extends AbstractProcessingHandler
                 HandleLogJob::dispatchSync($logData);
             }
         } catch (Throwable $e) {
-            // Prevent infinite loops by using a different logger
-            Log::channel('single')->warning('Failed to queue log to Sorane: '.$e->getMessage());
+            // Prevent infinite loops by using sorane_internal channel
+            try {
+                Log::channel('sorane_internal')->warning('Failed to queue log to Sorane: '.$e->getMessage());
+            } catch (Throwable) {
+                // Silent failure if channel not configured
+            }
         }
     }
 }

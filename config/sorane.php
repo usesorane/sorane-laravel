@@ -103,5 +103,6 @@ return [
         'cache_driver' => env('SORANE_BATCH_CACHE_DRIVER', 'redis'),
         'buffer_ttl' => env('SORANE_BATCH_BUFFER_TTL', 3600), // 1 hour
         'max_buffer_size' => env('SORANE_BATCH_MAX_BUFFER_SIZE', 5000),
+        'max_batch_size' => env('SORANE_BATCH_MAX_BATCH_SIZE', 1000),
     ],
 ];

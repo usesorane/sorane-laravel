@@ -34,13 +34,13 @@ class HandleLogJob implements ShouldQueue
 
     /**
      * Handle job failure after all retries exhausted.
-     * Logs to 'single' channel to prevent infinite error loops (never logs to Sorane).
+     * Logs to 'sorane_internal' channel to prevent infinite error loops (never logs to Sorane).
      */
     public function failed(Throwable $exception): void
     {
-        // Always use 'single' channel - it exists in all Laravel apps
-        // and is never the Sorane channel, preventing infinite loops
-        Log::channel('single')
+        // Use 'sorane_internal' channel
+        // to prevent infinite loops by bypassing Sorane's own capture
+        Log::channel('sorane_internal')
             ->critical('Sorane job failed after all retries', [
                 'job_class' => static::class,
                 'exception' => $exception->getMessage(),

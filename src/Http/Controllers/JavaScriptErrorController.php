@@ -81,6 +81,13 @@ class JavaScriptErrorController extends Controller
         }
 
         // Prepare error data for Sorane API
+        // Limit context size to stay within API 5MB request limit
+        $context = DataSanitizer::sanitizeForSerialization($request->input('context', []));
+        $contextJson = json_encode($context);
+        if (mb_strlen($contextJson) > 51200) { // 50KB
+            $context = ['_truncated' => 'Context exceeded 50KB limit and was removed'];
+        }
+
         $errorData = [
             'message' => $errorMessage,
             'stack' => $request->input('stack'),
@@ -95,7 +102,7 @@ class JavaScriptErrorController extends Controller
             'user_id' => $request->user()?->id,
             'session_id' => session()->getId(),
             'breadcrumbs' => $this->sanitizeBreadcrumbs($request->input('breadcrumbs', [])),
-            'context' => DataSanitizer::sanitizeForSerialization($request->input('context', [])),
+            'context' => $context,
             'browser_info' => [
                 'screen_width' => $request->input('browser_info.screen_width'),
                 'screen_height' => $request->input('browser_info.screen_height'),
@@ -136,11 +143,19 @@ class JavaScriptErrorController extends Controller
 
         // Sanitize each breadcrumb
         return array_map(function ($breadcrumb) {
+            $data = DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? []);
+            $dataJson = json_encode($data);
+
+            // Limit breadcrumb data to 5KB to stay within API limits
+            if (mb_strlen($dataJson) > 5120) {
+                $data = ['_truncated' => 'Breadcrumb data exceeded 5KB limit and was removed'];
+            }
+
             return [
                 'timestamp' => $breadcrumb['timestamp'] ?? now()->format('c'),
                 'category' => $breadcrumb['category'] ?? 'unknown',
                 'message' => mb_substr($breadcrumb['message'] ?? '', 0, 500),
-                'data' => DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? []),
+                'data' => $data,
             ];
         }, $breadcrumbs);
     }

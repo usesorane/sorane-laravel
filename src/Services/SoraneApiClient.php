@@ -20,6 +20,42 @@ class SoraneApiClient
     }
 
     /**
+     * Format API response for consistent handling.
+     *
+     * @param  \Illuminate\Http\Client\Response  $response
+     * @return array<string, mixed>
+     */
+    protected function formatResponse($response): array
+    {
+        $data = $response->json();
+
+        return [
+            'status' => $response->status(),
+            'success' => $response->successful(),
+            'data' => is_array($data) ? $data : [],
+            'headers' => [
+                'retry-after' => $response->header('Retry-After'),
+            ],
+        ];
+    }
+
+    /**
+     * Format error response for network/exception errors.
+     *
+     * @return array<string, mixed>
+     */
+    protected function formatErrorResponse(string $message): array
+    {
+        return [
+            'status' => 0,
+            'success' => false,
+            'data' => [],
+            'error' => $message,
+            'headers' => [],
+        ];
+    }
+
+    /**
      * Send a batch of errors to Sorane.
      *
      * @param  array<int, array>  $errors
@@ -28,18 +64,11 @@ class SoraneApiClient
     public function sendErrorBatch(array $errors): array
     {
         if (empty($this->apiKey)) {
-            return [
-                'success' => false,
-                'message' => 'API key not configured',
-            ];
+            return $this->formatErrorResponse('API key not configured');
         }
 
         if (empty($errors)) {
-            return [
-                'success' => true,
-                'received' => 0,
-                'processed' => 0,
-            ];
+            return $this->formatErrorResponse('Empty batch provided');
         }
 
         try {
@@ -47,34 +76,19 @@ class SoraneApiClient
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/errors/1.0',
+                    'User-Agent' => 'Sorane-Laravel/Errors/1.0',
                     'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/errors/store', [
                     'errors' => $errors,
                 ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-
-                return is_array($data) ? $data : [
-                    'success' => true,
-                    'received' => count($errors),
-                    'processed' => count($errors),
-                ];
-            }
-
-            return [
-                'success' => false,
-                'message' => "API request failed with status {$response->status()}",
-                'status' => $response->status(),
-            ];
+            return $this->formatResponse($response);
         } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            return $this->formatErrorResponse($e->getMessage());
         }
     }
 
@@ -87,18 +101,11 @@ class SoraneApiClient
     public function sendJavaScriptErrorBatch(array $errors): array
     {
         if (empty($this->apiKey)) {
-            return [
-                'success' => false,
-                'message' => 'API key not configured',
-            ];
+            return $this->formatErrorResponse('API key not configured');
         }
 
         if (empty($errors)) {
-            return [
-                'success' => true,
-                'received' => 0,
-                'processed' => 0,
-            ];
+            return $this->formatErrorResponse('Empty batch provided');
         }
 
         try {
@@ -106,34 +113,19 @@ class SoraneApiClient
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/javascript-errors/1.0',
+                    'User-Agent' => 'Sorane-Laravel/JavaScriptErrors/1.0',
                     'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/javascript-errors/store', [
-                    'errors' => $errors,
+                    'javascript_errors' => $errors,
                 ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-
-                return is_array($data) ? $data : [
-                    'success' => true,
-                    'received' => count($errors),
-                    'processed' => count($errors),
-                ];
-            }
-
-            return [
-                'success' => false,
-                'message' => "API request failed with status {$response->status()}",
-                'status' => $response->status(),
-            ];
+            return $this->formatResponse($response);
         } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            return $this->formatErrorResponse($e->getMessage());
         }
     }
 
@@ -146,18 +138,11 @@ class SoraneApiClient
     public function sendEventBatch(array $events): array
     {
         if (empty($this->apiKey)) {
-            return [
-                'success' => false,
-                'message' => 'API key not configured',
-            ];
+            return $this->formatErrorResponse('API key not configured');
         }
 
         if (empty($events)) {
-            return [
-                'success' => true,
-                'received' => 0,
-                'processed' => 0,
-            ];
+            return $this->formatErrorResponse('Empty batch provided');
         }
 
         try {
@@ -165,34 +150,19 @@ class SoraneApiClient
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/events/1.0',
+                    'User-Agent' => 'Sorane-Laravel/Events/1.0',
                     'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/events/store', [
                     'events' => $events,
                 ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-
-                return is_array($data) ? $data : [
-                    'success' => true,
-                    'received' => count($events),
-                    'processed' => count($events),
-                ];
-            }
-
-            return [
-                'success' => false,
-                'message' => "API request failed with status {$response->status()}",
-                'status' => $response->status(),
-            ];
+            return $this->formatResponse($response);
         } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            return $this->formatErrorResponse($e->getMessage());
         }
     }
 
@@ -205,18 +175,11 @@ class SoraneApiClient
     public function sendLogBatch(array $logs): array
     {
         if (empty($this->apiKey)) {
-            return [
-                'success' => false,
-                'message' => 'API key not configured',
-            ];
+            return $this->formatErrorResponse('API key not configured');
         }
 
         if (empty($logs)) {
-            return [
-                'success' => true,
-                'received' => 0,
-                'processed' => 0,
-            ];
+            return $this->formatErrorResponse('Empty batch provided');
         }
 
         try {
@@ -224,34 +187,19 @@ class SoraneApiClient
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/logs/1.0',
+                    'User-Agent' => 'Sorane-Laravel/Logs/1.0',
                     'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/logs/store', [
                     'logs' => $logs,
                 ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-
-                return is_array($data) ? $data : [
-                    'success' => true,
-                    'received' => count($logs),
-                    'processed' => count($logs),
-                ];
-            }
-
-            return [
-                'success' => false,
-                'message' => "API request failed with status {$response->status()}",
-                'status' => $response->status(),
-            ];
+            return $this->formatResponse($response);
         } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            return $this->formatErrorResponse($e->getMessage());
         }
     }
 
@@ -264,18 +212,11 @@ class SoraneApiClient
     public function sendPageVisitBatch(array $visits): array
     {
         if (empty($this->apiKey)) {
-            return [
-                'success' => false,
-                'message' => 'API key not configured',
-            ];
+            return $this->formatErrorResponse('API key not configured');
         }
 
         if (empty($visits)) {
-            return [
-                'success' => true,
-                'received' => 0,
-                'processed' => 0,
-            ];
+            return $this->formatErrorResponse('Empty batch provided');
         }
 
         try {
@@ -283,34 +224,19 @@ class SoraneApiClient
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/page-visits/1.0',
+                    'User-Agent' => 'Sorane-Laravel/PageVisits/1.0',
                     'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/page-visits/store', [
-                    'visits' => $visits,
+                    'page_visits' => $visits,
                 ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-
-                return is_array($data) ? $data : [
-                    'success' => true,
-                    'received' => count($visits),
-                    'processed' => count($visits),
-                ];
-            }
-
-            return [
-                'success' => false,
-                'message' => "API request failed with status {$response->status()}",
-                'status' => $response->status(),
-            ];
+            return $this->formatResponse($response);
         } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            return $this->formatErrorResponse($e->getMessage());
         }
     }
 }

@@ -11,6 +11,8 @@ use Sorane\Laravel\Commands\SoraneErrorTestCommand;
 use Sorane\Laravel\Commands\SoraneEventTestCommand;
 use Sorane\Laravel\Commands\SoraneJavaScriptErrorTestCommand;
 use Sorane\Laravel\Commands\SoraneLogTestCommand;
+use Sorane\Laravel\Commands\SoranePauseClearCommand;
+use Sorane\Laravel\Commands\SoraneStatusCommand;
 use Sorane\Laravel\Commands\SoraneTestCommand;
 use Sorane\Laravel\Commands\SoraneWorkCommand;
 use Sorane\Laravel\Events\EventTracker;
@@ -59,6 +61,8 @@ class SoraneServiceProvider extends ServiceProvider
                 SoraneJavaScriptErrorTestCommand::class,
                 SoraneLogTestCommand::class,
                 SoraneWorkCommand::class,
+                SoraneStatusCommand::class,
+                SoranePauseClearCommand::class,
             ]);
         }
 

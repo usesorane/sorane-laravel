@@ -12,6 +12,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use RuntimeException;
 use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
 use Sorane\Laravel\Services\SoranePauseManager;
@@ -76,6 +77,31 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
+     * Handle job failure after all retries exhausted.
+     */
+    public function failed(Throwable $exception): void
+    {
+        $this->logError('Batch job failed after all retries', [
+            'type' => $this->type,
+            'exception' => $exception->getMessage(),
+        ]);
+
+        // Set feature pause for 15 minutes after final retry
+        $pauseManager = app(SoranePauseManager::class);
+        $pauseManager->setFeaturePause($this->type, 900, '500');
+    }
+
+    /**
+     * Calculate backoff time based on attempt number.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300, 900]; // 1min, 5min, 15min
+    }
+
+    /**
      * Handle API response according to spec.
      */
     protected function handleResponse(array $result, SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager): void
@@ -94,7 +120,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
             // Re-add all items and rethrow to trigger retry
             $this->reAddAllItemsToBuffer($buffer);
 
-            throw new \RuntimeException($result['error'] ?? 'Network error');
+            throw new RuntimeException($result['error'] ?? 'Network error');
         }
 
         // Handle based on HTTP status code
@@ -249,7 +275,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
         // Re-add all items and rethrow to trigger retry
         $this->reAddAllItemsToBuffer($buffer);
 
-        throw new \RuntimeException('Server returned 500 error');
+        throw new RuntimeException('Server returned 500 error');
     }
 
     /**
@@ -266,32 +292,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
         // Re-add all items and rethrow to trigger retry
         $this->reAddAllItemsToBuffer($buffer);
 
-        throw new \RuntimeException("Unexpected status code: {$status}");
-    }
-
-    /**
-     * Handle job failure after all retries exhausted.
-     */
-    public function failed(Throwable $exception): void
-    {
-        $this->logError('Batch job failed after all retries', [
-            'type' => $this->type,
-            'exception' => $exception->getMessage(),
-        ]);
-
-        // Set feature pause for 15 minutes after final retry
-        $pauseManager = app(SoranePauseManager::class);
-        $pauseManager->setFeaturePause($this->type, 900, '500');
-    }
-
-    /**
-     * Calculate backoff time based on attempt number.
-     *
-     * @return array<int, int>
-     */
-    public function backoff(): array
-    {
-        return [60, 300, 900]; // 1min, 5min, 15min
+        throw new RuntimeException("Unexpected status code: {$status}");
     }
 
     /**

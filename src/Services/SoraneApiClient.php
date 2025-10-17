@@ -20,42 +20,6 @@ class SoraneApiClient
     }
 
     /**
-     * Format API response for consistent handling.
-     *
-     * @param  \Illuminate\Http\Client\Response  $response
-     * @return array<string, mixed>
-     */
-    protected function formatResponse($response): array
-    {
-        $data = $response->json();
-
-        return [
-            'status' => $response->status(),
-            'success' => $response->successful(),
-            'data' => is_array($data) ? $data : [],
-            'headers' => [
-                'retry-after' => $response->header('Retry-After'),
-            ],
-        ];
-    }
-
-    /**
-     * Format error response for network/exception errors.
-     *
-     * @return array<string, mixed>
-     */
-    protected function formatErrorResponse(string $message): array
-    {
-        return [
-            'status' => 0,
-            'success' => false,
-            'data' => [],
-            'error' => $message,
-            'headers' => [],
-        ];
-    }
-
-    /**
      * Send a batch of errors to Sorane.
      *
      * @param  array<int, array>  $errors
@@ -238,5 +202,41 @@ class SoraneApiClient
         } catch (Throwable $e) {
             return $this->formatErrorResponse($e->getMessage());
         }
+    }
+
+    /**
+     * Format API response for consistent handling.
+     *
+     * @param  \Illuminate\Http\Client\Response  $response
+     * @return array<string, mixed>
+     */
+    protected function formatResponse($response): array
+    {
+        $data = $response->json();
+
+        return [
+            'status' => $response->status(),
+            'success' => $response->successful(),
+            'data' => is_array($data) ? $data : [],
+            'headers' => [
+                'retry-after' => $response->header('Retry-After'),
+            ],
+        ];
+    }
+
+    /**
+     * Format error response for network/exception errors.
+     *
+     * @return array<string, mixed>
+     */
+    protected function formatErrorResponse(string $message): array
+    {
+        return [
+            'status' => 0,
+            'success' => false,
+            'data' => [],
+            'error' => $message,
+            'headers' => [],
+        ];
     }
 }

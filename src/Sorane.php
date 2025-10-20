@@ -99,15 +99,16 @@ class Sorane
         // Trace
         $trace = $exception->getTraceAsString();
         $maxTraceLength = 5000;
+        $truncationSuffix = '... (truncated)';
 
         if (mb_strlen($trace) > $maxTraceLength) {
-            $trace = mb_substr($trace, 0, $maxTraceLength).'... (truncated)';
+            $trace = mb_substr($trace, 0, $maxTraceLength - mb_strlen($truncationSuffix)).$truncationSuffix;
         }
 
         // Truncate fields to stay within API 5MB request limit
         $message = $exception->getMessage();
         if (mb_strlen($message) > 10000) {
-            $message = mb_substr($message, 0, 10000).'... (truncated)';
+            $message = mb_substr($message, 0, 10000 - mb_strlen($truncationSuffix)).$truncationSuffix;
         }
 
         if ($file && mb_strlen($file) > 500) {
@@ -115,11 +116,11 @@ class Sorane
         }
 
         if ($url && mb_strlen($url) > 2000) {
-            $url = mb_substr($url, 0, 2000).'... (truncated)';
+            $url = mb_substr($url, 0, 2000 - mb_strlen($truncationSuffix)).$truncationSuffix;
         }
 
         if ($headers && mb_strlen($headers) > 5000) {
-            $headers = mb_substr($headers, 0, 5000).'... (truncated)';
+            $headers = mb_substr($headers, 0, 5000 - mb_strlen($truncationSuffix)).$truncationSuffix;
         }
 
         $time = Carbon::now()->toDateTimeString();

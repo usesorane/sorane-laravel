@@ -43,8 +43,9 @@ class SoraneLogHandler extends AbstractProcessingHandler
         // Prepare log data for Sorane API
         // Limit field sizes to stay within API 5MB request limit
         $message = $record->message;
+        $truncationSuffix = '... (truncated)';
         if (mb_strlen($message) > 50000) {
-            $message = mb_substr($message, 0, 50000).'... (truncated)';
+            $message = mb_substr($message, 0, 50000 - mb_strlen($truncationSuffix)).$truncationSuffix;
         }
 
         $context = DataSanitizer::sanitizeForSerialization($record->context);

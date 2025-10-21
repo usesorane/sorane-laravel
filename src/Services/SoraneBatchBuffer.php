@@ -37,7 +37,7 @@ class SoraneBatchBuffer
         ];
 
         // Use cache lock to ensure thread-safety
-        Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $item) {
+        $addItemResult = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $item) {
             $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
             $buffer[] = $item;
 
@@ -50,6 +50,11 @@ class SoraneBatchBuffer
 
             Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
         });
+
+        if ($addItemResult === false) {
+            // This means the lock could not be acquired; log a warning
+            InternalLogger::warning('Could not acquire cache lock to add item to buffer', ['type' => $type]);
+        }
     }
 
     /**
@@ -107,7 +112,7 @@ class SoraneBatchBuffer
     {
         $cacheKey = $this->getCacheKey($type);
 
-        Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $ids) {
+        $clearItemsResult = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $ids) {
             $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
 
             // Filter out items with matching IDs
@@ -122,6 +127,11 @@ class SoraneBatchBuffer
                 Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
             }
         });
+
+        if ($clearItemsResult === false) {
+            // This means the lock could not be acquired; log a warning
+            InternalLogger::warning('Could not acquire cache lock to clear items from buffer', ['type' => $type, 'ids' => $ids]);
+        }
     }
 
     /**

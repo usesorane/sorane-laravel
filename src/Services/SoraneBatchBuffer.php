@@ -7,6 +7,7 @@ namespace Sorane\Laravel\Services;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Psr\SimpleCache\InvalidArgumentException;
+use Sorane\Laravel\Support\InternalLogger;
 
 class SoraneBatchBuffer
 {
@@ -63,7 +64,7 @@ class SoraneBatchBuffer
     {
         $cacheKey = $this->getCacheKey($type);
 
-        return Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $limit) {
+        $itemsToProcess = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $limit) {
             $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
 
             // Get items to process
@@ -81,6 +82,18 @@ class SoraneBatchBuffer
 
             return $itemsToProcess;
         });
+
+        if ($itemsToProcess === false) {
+            // This means the lock could not be acquired; return empty array
+            // Can happen sometimes in high concurrency scenarios, but should not happen often
+
+            // Log to internal logger for monitoring
+            InternalLogger::warning('Could not acquire cache lock to get items from buffer', ['type' => $type]);
+
+            $itemsToProcess = [];
+        }
+
+        return $itemsToProcess;
     }
 
     /**

@@ -98,8 +98,9 @@ class SoraneBatchBuffer
             $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
 
             // Filter out items with matching IDs
-            $buffer = array_values(array_filter($buffer, function ($item) use ($ids) {
-                return ! in_array($item['id'], $ids, true);
+            $idsFlipped = array_flip($ids);
+            $buffer = array_values(array_filter($buffer, function ($item) use ($idsFlipped) {
+                return ! isset($idsFlipped[$item['id']]);
             }));
 
             if (empty($buffer)) {

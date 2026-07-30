@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
@@ -14,6 +15,7 @@ use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Utilities\DataSanitizer;
+use Ranetrace\Laravel\Utilities\RouteSecretResolver;
 use Ranetrace\Laravel\Utilities\SecretScrubber;
 use Throwable;
 
@@ -151,7 +153,7 @@ class Ranetrace
                 'properties' => SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($properties)),
                 'user' => $user,
                 'timestamp' => Carbon::now()->toIso8601String(),
-                'url' => app()->runningInConsole() ? null : SecretScrubber::scrubUrl(request()->fullUrl()),
+                'url' => app()->runningInConsole() ? null : $this->scrubRequestUrl(request()),
                 'user_agent_hash' => FingerprintGenerator::generateUserAgentHash(),
                 'session_id_hash' => FingerprintGenerator::generateSessionIdHash(),
             ];
@@ -225,19 +227,34 @@ class Ranetrace
     }
 
     /**
-     * Cast a single header value to string, scrub the Referer's query string
-     * (it can carry reset tokens / signed-URL signatures), and truncate to the
-     * per-value cap.
+     * Cast a single header value to string, scrub the Referer (it can carry
+     * reset tokens / signed-URL signatures in its query string AND in its path),
+     * and truncate to the per-value cap.
      */
     private function boundHeaderValue(string $name, mixed $value): string
     {
         $string = (string) $value;
 
         if ($name === 'referer') {
-            $string = (string) SecretScrubber::scrubUrl($string);
+            $string = (string) SecretScrubber::scrubUrlPath(
+                SecretScrubber::scrubUrl($string),
+                RouteSecretResolver::forUrl($string)
+            );
         }
 
         return $this->truncate($string, self::MAX_HEADER_VALUE_LENGTH);
+    }
+
+    /**
+     * Scrub the URL of the request being handled: sensitive query params, plus
+     * the path segments the resolved route names `{token}`, `{hash}`, etc.
+     */
+    private function scrubRequestUrl(HttpRequest $request): ?string
+    {
+        return SecretScrubber::scrubUrlPath(
+            SecretScrubber::scrubUrl($request->fullUrl()),
+            RouteSecretResolver::forRequest($request)
+        );
     }
 
     /**
@@ -353,7 +370,7 @@ class Ranetrace
         // If the error occurred via HTTP, gather request data
         if (! $isConsole) {
             $headers = $this->maskAndBoundHeaders($request->headers->all());
-            $url = $this->truncate((string) SecretScrubber::scrubUrl($request->fullUrl()), self::MAX_URL_LENGTH);
+            $url = $this->truncate((string) $this->scrubRequestUrl($request), self::MAX_URL_LENGTH);
             $method = $request->method();
         }
 

@@ -115,6 +115,103 @@ test('scrubUrl leaves urls without sensitive params untouched', function (): voi
         ->and(SecretScrubber::scrubUrl(null))->toBeNull();
 });
 
+test('sensitiveRouteParameterValues returns the values of sensitively-named parameters', function (): void {
+    expect(SecretScrubber::sensitiveRouteParameterValues([
+        'token' => 'abc123',
+        'reset_token' => 'def456',
+        'hash' => 'deadbeef',
+        'id' => '42',
+        'slug' => 'my-post',
+    ]))->toBe(['abc123', 'def456', 'deadbeef']);
+});
+
+test('sensitiveRouteParameterValues skips empty, non-scalar and duplicate values', function (): void {
+    expect(SecretScrubber::sensitiveRouteParameterValues([
+        'token' => '',
+        'api_key' => null,
+        'secret' => new stdClass,
+        'password' => 'same',
+        'password_confirmation_token' => 'same',
+    ]))->toBe(['same'])
+        ->and(SecretScrubber::sensitiveRouteParameterValues([]))->toBe([]);
+});
+
+test('sensitiveRouteParameterValues honours the binding field of a custom-key binding', function (): void {
+    // `Route::get('/invitations/{invitation:token}')` names the parameter
+    // `invitation` and records `token` as its binding field — the field is the
+    // only place that says the segment holds a secret.
+    expect(SecretScrubber::sensitiveRouteParameterValues(
+        ['invitation' => 'live-invite-abc', 'post' => 'my-post'],
+        ['invitation' => 'token', 'post' => 'slug']
+    ))->toBe(['live-invite-abc']);
+});
+
+test('isSensitiveRouteParameter matches on the name, the binding field, or neither', function (): void {
+    expect(SecretScrubber::isSensitiveRouteParameter('token'))->toBeTrue()
+        ->and(SecretScrubber::isSensitiveRouteParameter('hash'))->toBeTrue()
+        ->and(SecretScrubber::isSensitiveRouteParameter('invitation', 'token'))->toBeTrue()
+        ->and(SecretScrubber::isSensitiveRouteParameter('invitation'))->toBeFalse()
+        ->and(SecretScrubber::isSensitiveRouteParameter('post', 'slug'))->toBeFalse()
+        ->and(SecretScrubber::isSensitiveRouteParameter('post', ''))->toBeFalse();
+});
+
+test('the hash fragment applies to route parameters only, never to array keys', function (): void {
+    $result = SecretScrubber::scrub([
+        'user_agent_hash' => 'aaa',
+        'session_id_hash' => 'bbb',
+    ]);
+
+    expect($result['user_agent_hash'])->toBe('aaa')
+        ->and($result['session_id_hash'])->toBe('bbb');
+});
+
+test('scrubPathSegments redacts every segment equal to a sensitive value', function (): void {
+    expect(SecretScrubber::scrubPathSegments('/reset/abc123/confirm/abc123', ['abc123']))
+        ->toBe('/reset/[REDACTED]/confirm/[REDACTED]');
+});
+
+test('scrubPathSegments matches segments on their decoded form', function (): void {
+    expect(SecretScrubber::scrubPathSegments('/invite/a%20b', ['a b']))
+        ->toBe('/invite/[REDACTED]');
+});
+
+test('scrubPathSegments requires a whole-segment match', function (): void {
+    expect(SecretScrubber::scrubPathSegments('/reset/abc123-suffix', ['abc123']))
+        ->toBe('/reset/abc123-suffix');
+});
+
+test('scrubPathSegments leaves the path untouched without sensitive values', function (): void {
+    expect(SecretScrubber::scrubPathSegments('/reset/abc123', []))->toBe('/reset/abc123')
+        ->and(SecretScrubber::scrubPathSegments('/', ['abc123']))->toBe('/')
+        ->and(SecretScrubber::scrubPathSegments('', ['abc123']))->toBe('');
+});
+
+test('scrubUrlPath redacts the path while preserving scheme, host, port, query and fragment', function (): void {
+    expect(SecretScrubber::scrubUrlPath('https://example.com:8080/reset/abc123?page=2#top', ['abc123']))
+        ->toBe('https://example.com:8080/reset/[REDACTED]?page=2#top');
+});
+
+test('scrubUrlPath composes with scrubUrl without re-encoding the query', function (): void {
+    $url = 'https://example.com/reset/abc123?token=abc123&next=%2Fdashboard%3Fa%3D1';
+
+    expect(SecretScrubber::scrubUrlPath(SecretScrubber::scrubUrl($url), ['abc123']))
+        ->toBe('https://example.com/reset/[REDACTED]?token=[REDACTED]&next=%2Fdashboard%3Fa%3D1');
+});
+
+test('scrubUrlPath handles relative urls and urls without a path', function (): void {
+    expect(SecretScrubber::scrubUrlPath('/reset/abc123?page=2', ['abc123']))
+        ->toBe('/reset/[REDACTED]?page=2')
+        ->and(SecretScrubber::scrubUrlPath('https://example.com', ['abc123']))
+        ->toBe('https://example.com');
+});
+
+test('scrubUrlPath leaves the url untouched without sensitive values', function (): void {
+    expect(SecretScrubber::scrubUrlPath('https://example.com/reset/abc123', []))
+        ->toBe('https://example.com/reset/abc123')
+        ->and(SecretScrubber::scrubUrlPath(null, ['abc123']))->toBeNull()
+        ->and(SecretScrubber::scrubUrlPath('', ['abc123']))->toBe('');
+});
+
 test('scrubString redacts key=value secrets in free-form strings', function (): void {
     expect(SecretScrubber::scrubString('error with password=hunter2 in config'))
         ->toBe('error with password=[REDACTED] in config');

@@ -13,6 +13,7 @@ use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Utilities\DataSanitizer;
 use Ranetrace\Laravel\Utilities\PayloadSizer;
+use Ranetrace\Laravel\Utilities\RouteSecretResolver;
 use Ranetrace\Laravel\Utilities\SecretScrubber;
 use Throwable;
 
@@ -189,6 +190,8 @@ class JavaScriptErrorController extends Controller
             'Context exceeded 50KB limit and was removed'
         );
 
+        $reportedUrl = (string) $request->input('url');
+
         $errorData = [
             'message' => $errorMessage,
             'stack' => $request->input('stack') !== null
@@ -199,7 +202,13 @@ class JavaScriptErrorController extends Controller
             'line' => $request->input('line'),
             'column' => $request->input('column'),
             'user_agent' => $request->userAgent(),
-            'url' => SecretScrubber::scrubUrl((string) $request->input('url')),
+            // The reported URL is the page the error happened on, NOT this POST
+            // endpoint, so the current route says nothing about it — it gets its
+            // own route lookup to redact `{token}`-style path segments.
+            'url' => SecretScrubber::scrubUrlPath(
+                SecretScrubber::scrubUrl($reportedUrl),
+                RouteSecretResolver::forUrl($reportedUrl)
+            ),
             'timestamp' => $request->input('timestamp', now()->format('c')),
             'environment' => config('app.env'),
             // Contract method on Authenticatable — safe for non-Eloquent user models.

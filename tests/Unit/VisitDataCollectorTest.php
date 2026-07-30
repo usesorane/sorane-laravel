@@ -2,10 +2,28 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Ranetrace\Laravel\Analytics\VisitDataCollector;
 
+/**
+ * A request with a resolved route bound to it, mirroring what the collector
+ * sees from `web` group middleware (the route is matched before it runs).
+ */
+function requestWithRoute(string $url, string $uri): Request
+{
+    $request = Request::create($url, 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $route = (new Route(['GET'], $uri, static fn (): string => 'ok'))->bind($request);
+    $request->setRouteResolver(static fn (): Route => $route);
+
+    return $request;
+}
+
 test('it collects basic visit data', function (): void {
-    $request = Illuminate\Http\Request::create('https://example.com/test-page?utm_source=google', 'GET');
+    $request = Request::create('https://example.com/test-page?utm_source=google', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124');
     $request->headers->set('Referer', 'https://google.com');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
@@ -38,7 +56,7 @@ test('it detects mobile devices correctly', function (): void {
     ];
 
     foreach ($userAgents as $ua) {
-        $request = Illuminate\Http\Request::create('/', 'GET');
+        $request = Request::create('/', 'GET');
         $request->headers->set('User-Agent', $ua);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -55,7 +73,7 @@ test('it detects tablets correctly', function (): void {
     ];
 
     foreach ($userAgents as $ua) {
-        $request = Illuminate\Http\Request::create('/', 'GET');
+        $request = Request::create('/', 'GET');
         $request->headers->set('User-Agent', $ua);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -72,7 +90,7 @@ test('it detects desktop devices correctly', function (): void {
     ];
 
     foreach ($userAgents as $ua) {
-        $request = Illuminate\Http\Request::create('/', 'GET');
+        $request = Request::create('/', 'GET');
         $request->headers->set('User-Agent', $ua);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -91,7 +109,7 @@ test('it detects browsers correctly', function (): void {
     ];
 
     foreach ($tests as $ua => $expectedBrowser) {
-        $request = Illuminate\Http\Request::create('/', 'GET');
+        $request = Request::create('/', 'GET');
         $request->headers->set('User-Agent', $ua);
         $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -102,7 +120,7 @@ test('it detects browsers correctly', function (): void {
 });
 
 test('it collects utm parameters', function (): void {
-    $request = Illuminate\Http\Request::create('/', 'GET', [
+    $request = Request::create('/', 'GET', [
         'utm_source' => 'google',
         'utm_medium' => 'cpc',
         'utm_campaign' => 'summer_sale',
@@ -122,7 +140,7 @@ test('it collects utm parameters', function (): void {
 });
 
 test('it includes timestamp in ISO format', function (): void {
-    $request = Illuminate\Http\Request::create('/', 'GET');
+    $request = Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Test Browser');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
@@ -132,7 +150,7 @@ test('it includes timestamp in ISO format', function (): void {
 });
 
 test('it scrubs sensitive query params from url and referrer', function (): void {
-    $request = Illuminate\Http\Request::create('https://example.com/reset?token=abc&utm_source=google', 'GET');
+    $request = Request::create('https://example.com/reset?token=abc&utm_source=google', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0');
     $request->headers->set('Referer', 'https://example.com/login?api_key=zzz');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
@@ -146,8 +164,73 @@ test('it scrubs sensitive query params from url and referrer', function (): void
         ->and($data['utm_source'])->toBe('google');
 });
 
+test('it scrubs sensitive route parameter values from the path and url', function (): void {
+    $request = requestWithRoute(
+        'https://example.com/invitations/secret-token-123?page=2',
+        'invitations/{token}'
+    );
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/invitations/[REDACTED]')
+        ->and($data['url'])->toBe('https://example.com/invitations/[REDACTED]?page=2');
+});
+
+test('it scrubs a verification hash segment but keeps non-sensitive segments', function (): void {
+    $request = requestWithRoute(
+        'https://example.com/verify/42/deadbeefhash',
+        'verify/{id}/{hash}'
+    );
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/verify/42/[REDACTED]')
+        ->and($data['url'])->toBe('https://example.com/verify/42/[REDACTED]');
+});
+
+test('it leaves non-sensitive route parameters untouched', function (): void {
+    $request = requestWithRoute('https://example.com/articles/my-post', 'articles/{slug}');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/articles/my-post')
+        ->and($data['url'])->toBe('https://example.com/articles/my-post');
+});
+
+test('it scrubs both the path and the query when a token appears in each', function (): void {
+    $request = requestWithRoute(
+        'https://example.com/invitations/tok-abc?token=tok-abc&utm_source=mail',
+        'invitations/{token}'
+    );
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/invitations/[REDACTED]')
+        ->and($data['url'])->toBe('https://example.com/invitations/[REDACTED]?token=[REDACTED]&utm_source=mail');
+});
+
+test('it behaves exactly as before when no route is resolved', function (): void {
+    $request = Request::create('https://example.com/invitations/secret-token-123', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/invitations/secret-token-123')
+        ->and($data['url'])->toBe('https://example.com/invitations/secret-token-123');
+});
+
+test('it handles a parameterless route on the root path', function (): void {
+    $request = requestWithRoute('https://example.com/', '/');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/')
+        ->and($data['url'])->toBe('https://example.com');
+});
+
 test('it hashes user agent', function (): void {
-    $request = Illuminate\Http\Request::create('/', 'GET');
+    $request = Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Test Browser');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 

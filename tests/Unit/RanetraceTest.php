@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Ranetrace\Laravel\Events\EventTracker;
@@ -357,6 +359,34 @@ test('maskAndBoundHeaders scrubs secrets from the referer query string', functio
     ]);
 
     expect($masked['referer'][0])->toBe('https://example.com/reset?token=[REDACTED]&page=2');
+});
+
+test('maskAndBoundHeaders scrubs a sensitive segment from the referer PATH', function (): void {
+    Illuminate\Support\Facades\Route::get('/reset-password/{token}', fn (): string => 'reset');
+
+    // The Referer describes a page the visitor was on before the error, so it
+    // is matched against the application's routes rather than the current one.
+
+    $ranetrace = new Ranetrace;
+    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
+
+    $masked = $method->invoke($ranetrace, [
+        'referer' => ['http://localhost/reset-password/live-reset-token-xyz789'],
+    ]);
+
+    expect($masked['referer'][0])->toBe('http://localhost/reset-password/[REDACTED]');
+});
+
+test('the error payload url has its sensitive path segment redacted', function (): void {
+    $request = Request::create('http://localhost/reset-password/live-reset-token-xyz789?page=2', 'GET');
+    $route = (new Route(['GET'], 'reset-password/{token}', fn (): string => 'reset'))->bind($request);
+    $request->setRouteResolver(fn (): Route => $route);
+
+    $ranetrace = new Ranetrace;
+    $method = new ReflectionMethod($ranetrace, 'scrubRequestUrl');
+
+    expect($method->invoke($ranetrace, $request))
+        ->toBe('http://localhost/reset-password/[REDACTED]?page=2');
 });
 
 // --- client IP is not captured (R2-2) ---

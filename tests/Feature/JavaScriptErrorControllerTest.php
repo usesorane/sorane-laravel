@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Route;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 
 beforeEach(function (): void {
@@ -230,6 +231,37 @@ test('it redacts secrets from context and scrubs the url query', function (): vo
         return $data['context']['api_key'] === '[REDACTED]'
             && $data['context']['page'] === 'home'
             && $data['url'] === 'https://example.com/reset?token=[REDACTED]&page=2';
+    });
+});
+
+test('it scrubs a sensitive segment from the reported url PATH', function (): void {
+    // The reported url is the page the error happened on, not this POST
+    // endpoint, so it gets its own route lookup.
+    Route::get('/reset-password/{token}', fn (): string => 'reset');
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'http://localhost/reset-password/live-reset-token-xyz789',
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        $url = $job->getErrorData()['url'];
+
+        return $url === 'http://localhost/reset-password/[REDACTED]'
+            && ! str_contains($url, 'live-reset-token-xyz789');
+    });
+});
+
+test('it scrubs a sensitive segment from a url that came in via the Referer fallback', function (): void {
+    Route::get('/reset-password/{token}', fn (): string => 'reset');
+
+    $this->withHeaders(['Referer' => 'http://localhost/reset-password/live-reset-token-xyz789'])
+        ->postJson(route('ranetrace.javascript-errors.store'), [
+            'message' => 'Test error',
+        ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        return $job->getErrorData()['url'] === 'http://localhost/reset-password/[REDACTED]';
     });
 });
 

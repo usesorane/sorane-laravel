@@ -84,6 +84,7 @@ class TrackPageVisit
     protected const array DEFAULT_EXCLUDED_PATHS = [
         'horizon', 'nova', 'telescope', 'admin', 'filament',
         'api', 'debugbar', 'storage', 'livewire', '_debugbar',
+        'up', 'sanctum', '_ignition',
     ];
 
     /**
@@ -110,9 +111,43 @@ class TrackPageVisit
         return $next($request);
     }
 
+    /**
+     * Decide whether the request is a trackable page view and, if so, buffer it.
+     *
+     * The skips below fall into two groups, deliberately kept apart:
+     *
+     * - Correctness/safety skips (this method, in code): rules the package owns
+     *   and must be able to fix for every installation. They are NOT expressed
+     *   as `excluded_paths` entries, because a published config freezes that
+     *   array — the in-code fallback only applies when the key is absent — so
+     *   anything added there upstream never reaches an app that published the
+     *   config.
+     * - App-owned preferences (`website_analytics.excluded_paths`): which of
+     *   *their* sections a host does not want in analytics. Editable, and the
+     *   package never depends on an entry being present.
+     */
     private function captureVisit(Request $request): void
     {
         if (! config('ranetrace.enabled', true) || ! config('ranetrace.website_analytics.enabled', false)) {
+            return;
+        }
+
+        // Page-view analytics is GET-only by design. This structurally excludes
+        // form submissions, broadcasting/auth calls and component-framework XHR
+        // (Livewire, Inertia) without relying on any path matching.
+        if (! $request->isMethod('GET')) {
+            return;
+        }
+
+        // Defense-in-depth for Livewire GETs: Livewire 4 serves its endpoint
+        // from /livewire-{hash}/update (the hash derives from APP_KEY), so no
+        // static path can match it. The header is read directly — this package
+        // does not depend on Livewire and must never reference its classes.
+        if ($request->headers->has('X-Livewire')) {
+            return;
+        }
+
+        if ($this->isRanetraceDashboardRequest($request)) {
             return;
         }
 
@@ -226,5 +261,37 @@ class TrackPageVisit
                 HandlePageVisitJob::dispatchSync($visitData);
             }
         }
+    }
+
+    /**
+     * Whether the request targets Ranetrace's own diagnostics dashboard.
+     *
+     * The dashboard prefix is configurable, so it cannot be expressed as a
+     * static `excluded_paths` entry. The route-name check is the primary
+     * signal — this runs as `web` group middleware, so the route is already
+     * resolved — and the path comparison covers edge wiring where no route
+     * matched. When a dashboard domain is configured, the path comparison only
+     * applies on that host: the same path on the main domain is a legitimate
+     * page of the host application.
+     */
+    private function isRanetraceDashboardRequest(Request $request): bool
+    {
+        if ($request->routeIs('ranetrace.*')) {
+            return true;
+        }
+
+        $prefix = mb_trim((string) config('ranetrace.dashboard.path', 'ranetrace'), '/');
+
+        if ($prefix === '') {
+            return false;
+        }
+
+        $domain = config('ranetrace.dashboard.domain');
+
+        if (is_string($domain) && $domain !== '' && $request->getHost() !== $domain) {
+            return false;
+        }
+
+        return $request->is($prefix) || $request->is($prefix.'/*');
     }
 }

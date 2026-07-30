@@ -50,6 +50,9 @@ return [
             'storage',
             'livewire',
             '_debugbar',
+            'up',
+            'sanctum',
+            '_ignition',
         ],
         'request_filter' => null,
         'user_agent' => [

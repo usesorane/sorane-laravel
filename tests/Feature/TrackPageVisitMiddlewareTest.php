@@ -341,6 +341,137 @@ test('it filters headless browser user agents', function (): void {
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
+test('it does not track non-GET requests even with human browser headers', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // A real browser form POST: everything except the verb looks human.
+    captureThroughMiddleware('/contact', 'POST');
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('it does not track requests carrying the X-Livewire header', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // Livewire 4 serves /livewire-{hash}/update, so no excluded_paths entry can
+    // match it; the header is the only stable signal.
+    $this->withHeaders(humanBrowserHeaders() + ['X-Livewire' => '1'])->get('/');
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('it does not track visits to the package dashboard', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // Gate-denied (non-local env) still reaches the middleware — capture runs
+    // before $next() — so a 403 hit must not be counted either.
+    $this->withHeaders(humanBrowserHeaders())->get('/ranetrace')->assertForbidden();
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('it does not track the dashboard when its path is customized', function (): void {
+    $this->configOverrides = ['ranetrace.dashboard.path' => 'telemetry'];
+    $this->reloadApplication();
+
+    Bus::fake();
+    Cache::flush();
+    $this->app['env'] = 'local';
+
+    $this->withHeaders(humanBrowserHeaders())->get('/telemetry')->assertOk();
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('it skips the configured dashboard prefix even when no ranetrace route matched', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // Point the dashboard at a path served by an ordinary app route: the
+    // secondary path check must still skip it.
+    config(['ranetrace.dashboard.path' => 'panel']);
+
+    captureThroughMiddleware('/panel');
+    captureThroughMiddleware('/panel/checks');
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('the dashboard path check only applies on the configured dashboard domain', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // With a dedicated dashboard domain, the same path on the app's own domain
+    // is a legitimate page and must still be tracked.
+    config([
+        'ranetrace.dashboard.path' => 'panel',
+        'ranetrace.dashboard.domain' => 'telemetry.example.com',
+    ]);
+
+    captureThroughMiddleware('/panel');
+
+    Bus::assertDispatched(HandlePageVisitJob::class);
+});
+
+test('it does not track health check or framework machine paths', function (string $path): void {
+    Bus::fake();
+    Cache::flush();
+
+    captureThroughMiddleware($path);
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+})->with([
+    'health check' => '/up',
+    'sanctum csrf cookie' => '/sanctum/csrf-cookie',
+    'ignition' => '/_ignition/health-check',
+]);
+
+test('a normal human GET is still tracked (regression)', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    captureThroughMiddleware('/some-marketing-page');
+
+    Bus::assertDispatched(HandlePageVisitJob::class);
+});
+
+/**
+ * Headers a real browser sends, shared by the tests that must isolate a single
+ * skip rule rather than any of the bot heuristics.
+ *
+ * @return array<string, string>
+ */
+function humanBrowserHeaders(): array
+{
+    return [
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ];
+}
+
+/**
+ * Run one request straight through the middleware. Used where the assertion is
+ * about a path or verb the test application has no route for — an unmatched
+ * route never reaches group middleware, which would make the test vacuous.
+ */
+function captureThroughMiddleware(string $uri, string $method = 'GET'): void
+{
+    $request = Illuminate\Http\Request::create($uri, $method);
+
+    foreach (humanBrowserHeaders() as $name => $value) {
+        $request->headers->set($name, $value);
+    }
+
+    (new Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit)->handle(
+        $request,
+        fn (): Illuminate\Http\Response => response('OK')
+    );
+}
+
 /**
  * A valid RequestFilter whose shouldSkip() always throws — used to prove the
  * middleware's failure isolation (a fault mid-capture must not 500 the request).

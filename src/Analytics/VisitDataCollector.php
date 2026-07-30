@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Analytics;
 
 use Illuminate\Http\Request;
+use Ranetrace\Laravel\Utilities\RouteSecretResolver;
 use Ranetrace\Laravel\Utilities\SecretScrubber;
 
 class VisitDataCollector
@@ -13,15 +14,33 @@ class VisitDataCollector
     {
         $userAgent = $request->userAgent();
         $url = $request->fullUrl();
+        $parsedPath = parse_url($url, PHP_URL_PATH);
+        $path = is_string($parsedPath) && $parsedPath !== '' ? $parsedPath : '/';
+
+        // Secrets also live in the PATH (`password/reset/{token}`), where only
+        // the resolved route can tell which segment is a secret. This middleware
+        // runs in the `web` GROUP, so the route is already available here; when
+        // there is none, the list is empty and both fields are left untouched.
+        $sensitiveValues = RouteSecretResolver::forRequest($request);
+
+        // The referrer describes a DIFFERENT request — the page the visitor came
+        // from — so the current route says nothing about it. Same-origin
+        // navigations send the full URL by default, which is exactly how a live
+        // reset token reaches us one page after `/reset-password/{token}` was
+        // itself redacted; that URL gets its own route lookup.
+        $referrer = $request->headers->get('referer');
 
         return [
-            'url' => SecretScrubber::scrubUrl($url),
-            'path' => parse_url($url, PHP_URL_PATH) ?? '/',
+            'url' => SecretScrubber::scrubUrlPath(SecretScrubber::scrubUrl($url), $sensitiveValues),
+            'path' => SecretScrubber::scrubPathSegments($path, $sensitiveValues),
             'ip' => $request->ip(), // Only used internally to resolve geo
             'user_agent' => $userAgent,
             'user_agent_hash' => FingerprintGenerator::generateUserAgentHash($request),
 
-            'referrer' => SecretScrubber::scrubUrl($request->headers->get('referer')),
+            'referrer' => SecretScrubber::scrubUrlPath(
+                SecretScrubber::scrubUrl($referrer),
+                RouteSecretResolver::forUrl($referrer)
+            ),
 
             'device_type' => self::detectDeviceType($userAgent),
             'browser_name' => self::detectBrowser($userAgent),

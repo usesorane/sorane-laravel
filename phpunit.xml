@@ -15,6 +15,15 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!--
+            Browser tests drive a real Chromium via Playwright and need
+            `npm install && npx playwright install chromium` first, so they are
+            excluded from the default run (see the `test` composer script) and
+            invoked explicitly via `composer test-browser`.
+        -->
+        <testsuite name="Browser">
+            <directory>tests/Browser</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

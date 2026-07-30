@@ -4,4 +4,4 @@ declare(strict_types=1);
 
 use Ranetrace\Laravel\Tests\TestCase;
 
-uses(TestCase::class)->in('Feature', 'Unit');
+uses(TestCase::class)->in('Browser', 'Feature', 'Unit');

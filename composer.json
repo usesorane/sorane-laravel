@@ -23,7 +23,7 @@
     "require-dev": {
         "larastan/larastan": "^3.0",
         "laravel/boost": "^2.0",
-        "laravel/mcp": "^0.7",
+        "laravel/mcp": "^0.7||^0.8||^0.9",
         "laravel/pint": "^1.14",
         "nunomaduro/collision": "^8.1.1",
         "orchestra/testbench": "^10.0||^11.0",
@@ -35,7 +35,7 @@
         "phpstan/phpstan-phpunit": "^2.0"
     },
     "suggest": {
-        "laravel/mcp": "Required for MCP server functionality (^0.7)"
+        "laravel/mcp": "Required for MCP server functionality (^0.9)"
     },
     "autoload": {
         "psr-4": {

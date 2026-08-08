@@ -241,10 +241,18 @@ test('error payload no longer contains the always-null `console_options` field',
     expect($payload)->not->toHaveKey('console_options');
 });
 
-test('error payload has exactly 18 fields', function (): void {
+test('error payload has exactly 19 fields', function (): void {
     $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
 
-    expect(count($payload))->toBe(18);
+    expect(count($payload))->toBe(19);
+});
+
+test('error payload sends the generic framework pair instead of laravel_version', function (): void {
+    $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
+
+    expect($payload['framework'])->toBe('laravel')
+        ->and($payload['framework_version'])->toBe(app()->version())
+        ->and($payload)->not->toHaveKey('laravel_version');
 });
 
 test('error payload uses an ISO 8601 timestamp, not the legacy time field', function (): void {

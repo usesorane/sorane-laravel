@@ -438,7 +438,10 @@ class Ranetrace
             'url' => $url,
             'method' => $method,
             'php_version' => phpversion(),
-            'laravel_version' => app()->version(),
+            // The generic pair the backend stores as-is; the legacy
+            // `laravel_version` spelling (normalized at ingest) is retired.
+            'framework' => 'laravel',
+            'framework_version' => app()->version(),
             'is_console' => $isConsole,
             'console_command' => $consoleCommand,
             'console_arguments' => $consoleArguments,

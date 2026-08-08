@@ -17,6 +17,7 @@ All notable changes to `ranetrace-laravel` will be documented in this file.
 - New default `excluded_paths` entries: `up`, `sanctum`, `_ignition` (note: apps that already published `config/ranetrace.php` keep their frozen list and must add these manually)
 
 ### Changed
+- Error payloads now send the generic `framework: laravel` + `framework_version` pair instead of the legacy `laravel_version` field (item goes from 18 to 19 keys). Requires a backend that accepts the generic pair (app commit `0d93eae0` or later); see `.claude/backend-changes-needed.md` Round 11
 - Refactored package to use native Laravel service provider instead of Spatie Laravel Package Tools
 - Removed `spatie/laravel-package-tools` dependency
 - Service provider now extends `Illuminate\Support\ServiceProvider` directly

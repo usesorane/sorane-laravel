@@ -328,6 +328,28 @@ test('it scrubs a sensitive path segment inside breadcrumb and context URLs', fu
     });
 });
 
+test('it scrubs a sensitive path segment from a RELATIVE breadcrumb URL', function (): void {
+    // The fetch/XHR breadcrumb hooks record the argument the app passed, which
+    // is usually relative rather than the absolute href.
+    Route::get('/reset-password/{token}', fn (): string => 'reset');
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'http://localhost/',
+        'breadcrumbs' => [[
+            'timestamp' => now()->toISOString(),
+            'category' => 'http',
+            'message' => 'fetch',
+            'data' => ['url' => '/reset-password/live-reset-token-xyz789?next=/account'],
+        ]],
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        return $job->getErrorData()['breadcrumbs'][0]['data']['url']
+            === '/reset-password/[REDACTED]?next=/account';
+    });
+});
+
 test('it rejects an oversized timestamp', function (): void {
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',

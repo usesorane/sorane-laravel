@@ -30,11 +30,33 @@ test('forUrl returns nothing for routes without a sensitive parameter', function
 
 test('forUrl ignores urls that are not this application', function (): void {
     // A third-party referrer's path is not described by our routes, so guessing
-    // at it would be meaningless — even when it happens to look like one.
+    // at it would be meaningless — even when it happens to look like one. A
+    // host-less URL carrying a scheme is not one of our pages either.
     expect(RouteSecretResolver::forUrl('https://example.com/reset-password/not-ours'))->toBe([])
-        ->and(RouteSecretResolver::forUrl('/reset-password/relative'))->toBe([])
+        ->and(RouteSecretResolver::forUrl('mailto:someone@example.com'))->toBe([])
         ->and(RouteSecretResolver::forUrl(null))->toBe([])
         ->and(RouteSecretResolver::forUrl(''))->toBe([]);
+});
+
+test('forUrl resolves a relative reference as this application', function (): void {
+    // A relative URL was resolved by the browser against the page it was on,
+    // which is one of ours, so it describes our routes by definition. The
+    // fetch/XHR breadcrumb hooks record whatever argument the app passed, which
+    // is frequently relative.
+    expect(RouteSecretResolver::forUrl('/reset-password/live-token-abc'))
+        ->toBe(['live-token-abc'])
+        ->and(RouteSecretResolver::forUrl('reset-password/live-token-abc'))
+        ->toBe(['live-token-abc'])
+        ->and(RouteSecretResolver::forUrl('/articles/my-post'))
+        ->toBe([]);
+});
+
+test('forUrl accepts pre-resolved candidate routes', function (): void {
+    $candidates = RouteSecretResolver::sensitiveParameterRoutes();
+
+    expect($candidates)->not->toBeEmpty()
+        ->and(RouteSecretResolver::forUrl('/reset-password/live-token-abc', $candidates))
+        ->toBe(['live-token-abc']);
 });
 
 test('forUrl never throws on a malformed url', function (): void {

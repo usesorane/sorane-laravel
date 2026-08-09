@@ -55,18 +55,25 @@ final class RouteSecretResolver
     /**
      * Sensitive values from the route that the given URL would resolve to.
      *
-     * Only the application's own hosts are matched: a third-party referrer's
-     * path is not described by our routes, so guessing at it would be
-     * meaningless. Matching is restricted to the routes that actually declare a
-     * sensitive parameter — usually a handful (password reset, verification,
-     * invitations) — so the common case costs a few regex tests rather than a
-     * second full pass over the route table. A URL is only ever matched against
-     * a CLONE of the route: `Route::bind()` mutates the route it is called on,
-     * and these are the same shared instances the current request is using.
+     * A URL with a host is only matched when that host is the application's
+     * own: a third-party referrer's path is not described by our routes, so
+     * guessing at it would be meaningless. A URL with NO host is a relative
+     * reference, which by definition points at this application — the browser
+     * resolved it against the page it was on — so it is matched the same way. A
+     * host-less URL that still carries a scheme (`mailto:`, `data:`) is not one
+     * of our pages and is refused.
      *
+     * Matching is restricted to the routes that actually declare a sensitive
+     * parameter — usually a handful (password reset, verification, invitations)
+     * — so the common case costs a few regex tests rather than a second full
+     * pass over the route table. A URL is only ever matched against a CLONE of
+     * the route: `Route::bind()` mutates the route it is called on, and these
+     * are the same shared instances the current request is using.
+     *
+     * @param  array<int, Route>|null  $candidateRoutes  Pre-resolved candidates from {@see sensitiveParameterRoutes()}, for a caller resolving many URLs in one pass.
      * @return array<int, string>
      */
-    public static function forUrl(?string $url): array
+    public static function forUrl(?string $url, ?array $candidateRoutes = null): array
     {
         if ($url === null || $url === '') {
             return [];
@@ -75,13 +82,17 @@ final class RouteSecretResolver
         try {
             $host = parse_url($url, PHP_URL_HOST);
 
-            if (! is_string($host) || ! self::isApplicationHost($host)) {
+            if (is_string($host) && $host !== '') {
+                if (! self::isApplicationHost($host)) {
+                    return [];
+                }
+            } elseif (parse_url($url, PHP_URL_SCHEME) !== null) {
                 return [];
             }
 
             $request = Request::create($url, 'GET');
 
-            foreach (self::routesWithSensitiveParameters() as $route) {
+            foreach ($candidateRoutes ?? self::routesWithSensitiveParameters() as $route) {
                 // Method validation is skipped: the candidate list is already
                 // GET-only, and a page URL is a GET by construction.
                 if (! $route->matches($request, false)) {
@@ -110,20 +121,22 @@ final class RouteSecretResolver
     }
 
     /**
-     * Whether the application defines any route that could contribute a path
-     * redaction at all.
+     * The candidate routes {@see forUrl()} would otherwise resolve per call.
      *
-     * {@see SecretScrubber::scrubDeep()} calls this once so that a recursion
-     * over dozens of breadcrumb strings does not walk the route table per
-     * string: an application with no secret-bearing route can skip path
-     * resolution entirely.
+     * {@see SecretScrubber::scrubDeep()} resolves these once and threads them
+     * through its recursion, so a payload with dozens of URL-shaped breadcrumb
+     * values walks the route table once rather than once per value. An empty
+     * result also means path resolution can be skipped outright: an application
+     * with no secret-bearing route has nothing for it to find.
+     *
+     * @return array<int, Route>
      */
-    public static function hasSensitiveParameterRoutes(): bool
+    public static function sensitiveParameterRoutes(): array
     {
         try {
-            return self::routesWithSensitiveParameters() !== [];
+            return self::routesWithSensitiveParameters();
         } catch (Throwable) {
-            return false;
+            return [];
         }
     }
 

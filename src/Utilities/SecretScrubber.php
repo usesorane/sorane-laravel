@@ -101,7 +101,7 @@ class SecretScrubber
     {
         return self::scrubUrlValues(
             self::scrub($data),
-            RouteSecretResolver::hasSensitiveParameterRoutes()
+            RouteSecretResolver::sensitiveParameterRoutes()
         );
     }
 
@@ -374,10 +374,13 @@ class SecretScrubber
      * Both halves of a URL can carry a secret, so both are treated: the query
      * via {@see scrubUrl()}, and the path via {@see scrubUrlPath()} — the
      * latter only when the application actually defines a route with a
-     * secret-bearing parameter, which is resolved once per call rather than per
-     * string.
+     * secret-bearing parameter. Those candidate routes are resolved once by
+     * {@see scrubDeep()} and threaded through this recursion, so a payload with
+     * many URL-shaped values walks the route table once, not once per value.
+     *
+     * @param  array<int, \Illuminate\Routing\Route>  $candidateRoutes
      */
-    private static function scrubUrlValues(mixed $data, bool $resolvePathSecrets): mixed
+    private static function scrubUrlValues(mixed $data, array $candidateRoutes): mixed
     {
         if (is_string($data)) {
             if (! self::isScrubbableUrl($data)) {
@@ -386,16 +389,19 @@ class SecretScrubber
 
             $scrubbed = self::scrubUrl($data) ?? $data;
 
-            if (! $resolvePathSecrets) {
+            if ($candidateRoutes === []) {
                 return $scrubbed;
             }
 
-            return self::scrubUrlPath($scrubbed, RouteSecretResolver::forUrl($data)) ?? $scrubbed;
+            return self::scrubUrlPath(
+                $scrubbed,
+                RouteSecretResolver::forUrl($data, $candidateRoutes)
+            ) ?? $scrubbed;
         }
 
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                $data[$key] = self::scrubUrlValues($value, $resolvePathSecrets);
+                $data[$key] = self::scrubUrlValues($value, $candidateRoutes);
             }
         }
 

@@ -137,9 +137,9 @@ class JavaScriptErrorController extends Controller
             'line' => 'nullable|integer',
             'column' => 'nullable|integer',
             'url' => 'required|string|max:2000',
-            'timestamp' => 'nullable|string',
+            'timestamp' => 'nullable|string|max:64',
             'breadcrumbs' => 'nullable|array',
-            'breadcrumbs.*.timestamp' => 'required|string',
+            'breadcrumbs.*.timestamp' => 'required|string|max:64',
             'breadcrumbs.*.category' => 'required|string|max:100',
             'breadcrumbs.*.message' => 'required|string|max:500',
             'breadcrumbs.*.data' => 'nullable|array',
@@ -193,7 +193,7 @@ class JavaScriptErrorController extends Controller
         $reportedUrl = (string) $request->input('url');
 
         $errorData = [
-            'message' => $errorMessage,
+            'message' => SecretScrubber::scrubString((string) $errorMessage),
             'stack' => $request->input('stack') !== null
                 ? SecretScrubber::scrubString((string) $request->input('stack'))
                 : null,
@@ -216,7 +216,10 @@ class JavaScriptErrorController extends Controller
             // Hashed (not raw) so a leaked payload can't be used to hijack the
             // session, while still grouping errors within the same session.
             'session_id' => FingerprintGenerator::hash(session()->getId()),
-            'breadcrumbs' => $this->sanitizeBreadcrumbs($request->input('breadcrumbs', [])),
+            // `nullable|array` accepts an explicit null (and Laravel's
+            // ConvertEmptyStringsToNull turns a form-encoded `breadcrumbs=`
+            // into one), which `input()`'s default does NOT replace.
+            'breadcrumbs' => $this->sanitizeBreadcrumbs($request->input('breadcrumbs') ?? []),
             'context' => $context,
             'browser_info' => [
                 'screen_width' => $request->input('browser_info.screen_width'),

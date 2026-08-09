@@ -139,6 +139,28 @@ test('it collects utm parameters', function (): void {
     expect($data['utm_term'])->toBe('laravel');
 });
 
+test('it drops a non-string campaign parameter', function (): void {
+    // `?utm_source[]=x` yields an array, which violates the API's string|null
+    // schema and gets the whole batch rejected.
+    $request = Request::create('/', 'GET', ['utm_source' => ['x']]);
+    $request->headers->set('User-Agent', 'Test Browser');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['utm_source'])->toBeNull();
+});
+
+test('it caps an oversized campaign parameter', function (): void {
+    $request = Request::create('/', 'GET', ['utm_campaign' => str_repeat('a', 500)]);
+    $request->headers->set('User-Agent', 'Test Browser');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['utm_campaign'])->toHaveLength(255);
+});
+
 test('it includes timestamp in ISO format', function (): void {
     $request = Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Test Browser');

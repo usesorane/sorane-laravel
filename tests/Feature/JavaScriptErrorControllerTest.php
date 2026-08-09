@@ -303,6 +303,75 @@ test('it rejects a non-numeric browser_info dimension', function (): void {
     $response->assertJsonValidationErrors(['browser_info.screen_width']);
 });
 
+test('it rejects an oversized timestamp', function (): void {
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+        'timestamp' => str_repeat('a', 100), // exceeds max:64
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['timestamp']);
+});
+
+test('it rejects an oversized breadcrumb timestamp', function (): void {
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+        'breadcrumbs' => [[
+            'timestamp' => str_repeat('a', 100), // exceeds max:64
+            'category' => 'user',
+            'message' => 'Button clicked',
+        ]],
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['breadcrumbs.0.timestamp']);
+});
+
+test('it scrubs secrets from the message as it does from the stack', function (): void {
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Request to https://api.test/x?token=abc123 failed',
+        'url' => 'https://example.com/',
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        $message = $job->getErrorData()['message'];
+
+        return str_contains($message, 'token=[REDACTED]') && ! str_contains($message, 'abc123');
+    });
+});
+
+test('it scrubs a stringified rejection object in the message', function (): void {
+    // The bundled snippet's unhandledrejection handler JSON.stringifies the
+    // rejection value into `message`, so a rejected API response lands here.
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => '{"api_key":"sk_live_secret","status":"error"}',
+        'url' => 'https://example.com/',
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        return ! str_contains($job->getErrorData()['message'], 'sk_live_secret');
+    });
+});
+
+test('it accepts an explicit null breadcrumbs value', function (): void {
+    // `nullable|array` permits null, and input()'s default does not replace a
+    // stored null — passing it on used to raise a TypeError and a 500.
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+        'breadcrumbs' => null,
+    ]);
+
+    $response->assertStatus(200);
+    $response->assertJson(['success' => true]);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        return $job->getErrorData()['breadcrumbs'] === [];
+    });
+});
+
 test('it scrubs sensitive query params inside URL-valued breadcrumb and context data (T10)', function (): void {
     $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',

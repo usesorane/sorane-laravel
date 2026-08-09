@@ -10,6 +10,11 @@ use Ranetrace\Laravel\Utilities\SecretScrubber;
 
 class VisitDataCollector
 {
+    /**
+     * Maximum length kept for a visitor-supplied campaign parameter.
+     */
+    private const int MAX_UTM_LENGTH = 255;
+
     public static function collect(Request $request): array
     {
         $userAgent = $request->userAgent();
@@ -45,11 +50,11 @@ class VisitDataCollector
             'device_type' => self::detectDeviceType($userAgent),
             'browser_name' => self::detectBrowser($userAgent),
 
-            'utm_source' => $request->query('utm_source'),
-            'utm_medium' => $request->query('utm_medium'),
-            'utm_campaign' => $request->query('utm_campaign'),
-            'utm_content' => $request->query('utm_content'),
-            'utm_term' => $request->query('utm_term'),
+            'utm_source' => self::campaignParameter($request, 'utm_source'),
+            'utm_medium' => self::campaignParameter($request, 'utm_medium'),
+            'utm_campaign' => self::campaignParameter($request, 'utm_campaign'),
+            'utm_content' => self::campaignParameter($request, 'utm_content'),
+            'utm_term' => self::campaignParameter($request, 'utm_term'),
 
             'country_code' => self::resolveCountryFromIp($request->ip()),
 
@@ -57,6 +62,21 @@ class VisitDataCollector
 
             'timestamp' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * Read a campaign parameter as a bounded string.
+     *
+     * Query parameters are visitor-controlled: `?utm_source[]=x` yields an
+     * array and the value is otherwise unbounded, while the backend rejects
+     * the whole batch when one item violates the schema. Anything that is not
+     * a string is dropped rather than shipped.
+     */
+    protected static function campaignParameter(Request $request, string $key): ?string
+    {
+        $value = $request->query($key);
+
+        return is_string($value) ? mb_substr($value, 0, self::MAX_UTM_LENGTH) : null;
     }
 
     protected static function detectDeviceType(?string $userAgent): ?string

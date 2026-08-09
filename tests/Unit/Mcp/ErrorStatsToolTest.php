@@ -203,10 +203,12 @@ test('includes top_errors list when present', function (): void {
     ]);
     $text = executeToolRequest($client);
 
+    // The messages are end-user-authored, so they render as quoted literals.
     expect($text)->toContain('## Top Errors');
-    expect($text)->toContain('1. Database connection failed (50 occurrences)');
-    expect($text)->toContain('2. Null pointer exception (30 occurrences)');
-    expect($text)->toContain('3. API timeout (20 occurrences)');
+    expect($text)->toContain('1. "Database connection failed" (50 occurrences)');
+    expect($text)->toContain('2. "Null pointer exception" (30 occurrences)');
+    expect($text)->toContain('3. "API timeout" (20 occurrences)');
+    expect($text)->toContain('untrusted end-user input');
 });
 
 test('has correct description property', function (): void {

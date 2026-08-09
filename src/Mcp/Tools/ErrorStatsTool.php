@@ -9,11 +9,14 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\FormatsUntrustedText;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class ErrorStatsTool extends Tool
 {
+    use FormatsUntrustedText;
+
     /**
      * The tool's description.
      */
@@ -124,8 +127,11 @@ class ErrorStatsTool extends Tool
 
         if (! empty($stats['top_errors'])) {
             $output .= "\n## Top Errors\n";
+            $output .= $this->untrustedTextNotice()."\n\n";
+
             foreach ($stats['top_errors'] as $index => $error) {
-                $errorMessage = $error['message'] ?? 'Unknown';
+                // End-user-authored, same as every other rendered error message.
+                $errorMessage = $this->formatUntrustedText((string) ($error['message'] ?? 'Unknown'));
                 $errorCount = $error['count'] ?? 0;
                 $num = $index + 1;
                 $output .= "{$num}. {$errorMessage} ({$errorCount} occurrences)\n";

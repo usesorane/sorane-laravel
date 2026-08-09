@@ -8,11 +8,13 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\FormatsUntrustedText;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class UpdateNoteTool extends Tool
 {
+    use FormatsUntrustedText;
     use NormalizesIds;
 
     /**
@@ -115,13 +117,16 @@ class UpdateNoteTool extends Tool
     {
         $id = $note['id'] ?? 'unknown';
         $noteErrorId = $note['error_id'] ?? $errorId;
-        $body = $note['body'] ?? '';
-        $authorName = $note['author_name'] ?? 'Unknown';
+        $body = $this->formatUntrustedBlock((string) ($note['body'] ?? ''));
+        $authorName = $this->formatUntrustedText((string) ($note['author_name'] ?? 'Unknown'));
         $createdAt = $note['created_at'] ?? 'unknown';
         $updatedAt = $note['updated_at'] ?? $createdAt;
+        $notice = $this->untrustedTextNotice();
 
         return <<<NOTE
         # Note Updated Successfully
+
+        {$notice}
 
         **Note ID:** {$id}
         **Error ID:** {$noteErrorId}

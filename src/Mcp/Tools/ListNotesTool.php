@@ -9,6 +9,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\FormatsUntrustedText;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\MapsErrorActionResponse;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
@@ -16,7 +17,7 @@ use Ranetrace\Laravel\Services\RanetraceApiClient;
 #[IsReadOnly]
 class ListNotesTool extends Tool
 {
-    use MapsErrorActionResponse, NormalizesIds;
+    use FormatsUntrustedText, MapsErrorActionResponse, NormalizesIds;
 
     /**
      * The tool's description.
@@ -114,12 +115,13 @@ class ListNotesTool extends Tool
 
         $output = "# Notes for Error {$errorId}\n\n";
         $output .= 'Showing '.count($notes)." of {$total} notes\n\n";
+        $output .= $this->untrustedTextNotice()."\n\n";
 
         foreach ($notes as $note) {
             $id = $note['id'] ?? 'unknown';
-            $authorName = $note['author_name'] ?? 'Unknown';
+            $authorName = $this->formatUntrustedText((string) ($note['author_name'] ?? 'Unknown'));
             $createdAt = $note['created_at'] ?? 'unknown';
-            $body = $note['body'] ?? '';
+            $body = (string) ($note['body'] ?? '');
             $archived = ! empty($note['archived']) ? ' [ARCHIVED]' : '';
 
             $truncatedBody = mb_strlen($body) > 200
@@ -130,7 +132,7 @@ class ListNotesTool extends Tool
             $output .= "**Note ID:** {$id}{$archived}\n";
             $output .= "**Author:** {$authorName}\n";
             $output .= "**Created:** {$createdAt}\n\n";
-            $output .= "{$truncatedBody}\n\n";
+            $output .= $this->formatUntrustedBlock($truncatedBody)."\n\n";
         }
 
         return $output;

@@ -232,3 +232,35 @@ test('scrubString leaves strings without sensitive keys untouched', function ():
     expect(SecretScrubber::scrubString('just a normal message, id=42'))->toBe('just a normal message, id=42')
         ->and(SecretScrubber::scrubString(''))->toBe('');
 });
+
+test('scrubDeep redacts a sensitive query param in a relative URL value', function (): void {
+    // A signed download link recorded by the fetch/XHR breadcrumb hooks is
+    // usually relative; only the absolute form used to be redacted.
+    expect(SecretScrubber::scrubDeep(['url' => '/exports/42/download?expires=1735689600&signature=a1b2c3']))
+        ->toBe(['url' => '/exports/42/download?expires=1735689600&signature=[REDACTED]']);
+});
+
+test('scrubDeep redacts relative URL shapes that carry no leading slash', function (string $value, string $expected): void {
+    expect(SecretScrubber::scrubDeep(['u' => $value]))->toBe(['u' => $expected]);
+})->with([
+    'bare path' => ['api/user?token=SECRET', 'api/user?token=[REDACTED]'],
+    'current directory' => ['./api/user?token=SECRET', './api/user?token=[REDACTED]'],
+    'parent directory' => ['../api/user?token=SECRET', '../api/user?token=[REDACTED]'],
+    'query only' => ['?token=SECRET', '?token=[REDACTED]'],
+    'sub-delimiter in a sibling param' => ['/download?ids=1,2&signature=SECRET', '/download?ids=1,2&signature=[REDACTED]'],
+    'unencoded @ in the path' => ['/users/@rutger/files?token=SECRET', '/users/@rutger/files?token=[REDACTED]'],
+]);
+
+test('scrubDeep leaves free-form values that merely contain a question mark untouched', function (string $value): void {
+    // scrubUrl rewrites everything from the first `?` to the end, so admitting
+    // a non-URL here would silently truncate it.
+    expect(SecretScrubber::scrubDeep(['v' => $value]))->toBe(['v' => $value]);
+})->with([
+    'json payload' => ['{"callback":"/webhooks/return?token=abc","order_id":991,"amount":42.5}'],
+    'ternary' => ['isset($token)?$token:null'],
+    'regex' => ['/^(a|b)?token$/'],
+    'prose' => ['Did the token=abc request fail?'],
+    'markdown link' => ['[reset](/reset?token=abc)'],
+    'windows path' => ['C:\Users\token'],
+    'bare word' => ['token'],
+]);

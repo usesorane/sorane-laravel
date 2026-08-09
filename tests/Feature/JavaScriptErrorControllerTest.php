@@ -303,6 +303,31 @@ test('it rejects a non-numeric browser_info dimension', function (): void {
     $response->assertJsonValidationErrors(['browser_info.screen_width']);
 });
 
+test('it scrubs a sensitive path segment inside breadcrumb and context URLs', function (): void {
+    // The top-level `url` was already path-redacted; the same reset link copied
+    // into a navigation breadcrumb or into context used to ship the live token.
+    Route::get('/reset-password/{token}', fn (): string => 'reset');
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'http://localhost/',
+        'context' => ['page' => 'http://localhost/reset-password/live-reset-token-xyz789'],
+        'breadcrumbs' => [[
+            'timestamp' => now()->toISOString(),
+            'category' => 'navigation',
+            'message' => 'Page loaded',
+            'data' => ['url' => 'http://localhost/reset-password/live-reset-token-xyz789'],
+        ]],
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        $data = $job->getErrorData();
+
+        return $data['breadcrumbs'][0]['data']['url'] === 'http://localhost/reset-password/[REDACTED]'
+            && $data['context']['page'] === 'http://localhost/reset-password/[REDACTED]';
+    });
+});
+
 test('it rejects an oversized timestamp', function (): void {
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',

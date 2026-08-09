@@ -52,6 +52,26 @@ class SecretScrubber
     ];
 
     /**
+     * Characters allowed in the path of a relative reference — RFC 3986 pchar
+     * (unreserved, percent-encoded, sub-delims, `:` and `@`) plus the separator
+     * itself. Deliberately narrower than "anything without whitespace": it is
+     * what keeps prose, JSON and code snippets out of the URL path.
+     */
+    private const string URL_PATH_CHARS = "A-Za-z0-9._~%!$&'()*+,;=:@/-";
+
+    /**
+     * Characters allowed in a query parameter NAME: pchar without `=` (which
+     * separates the pair) and without `&` (which separates pairs).
+     */
+    private const string URL_KEY_CHARS = "A-Za-z0-9._~%!$'()*+,;:@-";
+
+    /**
+     * Characters allowed in a query parameter VALUE: as the name, plus `=` and
+     * `/`, both legal unencoded in a query.
+     */
+    private const string URL_VALUE_CHARS = "A-Za-z0-9._~%!$'()*+,;:@=/-";
+
+    /**
      * Recursively redact array values whose key matches a sensitive fragment.
      *
      * Non-array input is returned untouched, so this composes directly with the
@@ -67,10 +87,11 @@ class SecretScrubber
     }
 
     /**
-     * Like {@see scrub()} (key-based redaction), but ALSO scrubs sensitive
-     * query-string params inside URL-shaped string VALUES — catching a secret
-     * in an innocuously-keyed URL (e.g. a breadcrumb `data.endpoint` of
-     * `https://api/x?token=…`) that key-based scrubbing alone would miss.
+     * Like {@see scrub()} (key-based redaction), but ALSO scrubs secrets inside
+     * URL-shaped string VALUES — catching a secret in an innocuously-keyed URL
+     * (e.g. a breadcrumb `data.endpoint` of `https://api/x?token=…`, or the
+     * `{token}` segment of a reset link recorded as a navigation breadcrumb)
+     * that key-based scrubbing alone would miss.
      *
      * Intended for free-form, untrusted breadcrumb/context data. Composes with
      * the `mixed` return of {@see DataSanitizer::sanitizeForSerialization()},
@@ -78,7 +99,10 @@ class SecretScrubber
      */
     public static function scrubDeep(mixed $data): mixed
     {
-        return self::scrubUrlValues(self::scrub($data));
+        return self::scrubUrlValues(
+            self::scrub($data),
+            RouteSecretResolver::hasSensitiveParameterRoutes()
+        );
     }
 
     /**
@@ -343,25 +367,84 @@ class SecretScrubber
     }
 
     /**
-     * Recursively apply {@see scrubUrl()} to every string value that looks like
-     * an absolute http(s) URL, leaving all other values untouched. Operates on
-     * the already-depth-bounded output of {@see DataSanitizer}.
+     * Recursively redact secrets inside every URL-shaped string value, leaving
+     * all other values untouched. Operates on the already-depth-bounded output
+     * of {@see DataSanitizer}.
+     *
+     * Both halves of a URL can carry a secret, so both are treated: the query
+     * via {@see scrubUrl()}, and the path via {@see scrubUrlPath()} — the
+     * latter only when the application actually defines a route with a
+     * secret-bearing parameter, which is resolved once per call rather than per
+     * string.
      */
-    private static function scrubUrlValues(mixed $data): mixed
+    private static function scrubUrlValues(mixed $data, bool $resolvePathSecrets): mixed
     {
         if (is_string($data)) {
-            return str_starts_with($data, 'http://') || str_starts_with($data, 'https://')
-                ? (self::scrubUrl($data) ?? $data)
-                : $data;
+            if (! self::isScrubbableUrl($data)) {
+                return $data;
+            }
+
+            $scrubbed = self::scrubUrl($data) ?? $data;
+
+            if (! $resolvePathSecrets) {
+                return $scrubbed;
+            }
+
+            return self::scrubUrlPath($scrubbed, RouteSecretResolver::forUrl($data)) ?? $scrubbed;
         }
 
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                $data[$key] = self::scrubUrlValues($value);
+                $data[$key] = self::scrubUrlValues($value, $resolvePathSecrets);
             }
         }
 
         return $data;
+    }
+
+    /**
+     * Whether a string value should be treated as a URL and scrubbed.
+     *
+     * Absolute http(s) URLs always qualify. A relative reference qualifies only
+     * on a strict shape, because these values are free-form: it must carry a
+     * path separator or a query, must not contain a character that only turns
+     * up in prose, JSON or code, and its query — when it has one — must be a
+     * run of `key=value` pairs. That structure is what keeps a JSON payload or
+     * a code snippet with a question mark in it out of {@see scrubUrl()}, whose
+     * rewrite would otherwise truncate the value at its first `?`.
+     */
+    private static function isScrubbableUrl(string $value): bool
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            return true;
+        }
+
+        if (preg_match('/[\s"`{}<>\\\\|^\[\]]/', $value) === 1) {
+            return false;
+        }
+
+        if (! str_contains($value, '/') && ! str_contains($value, '?')) {
+            return false;
+        }
+
+        [$beforeFragment] = explode('#', $value, 2);
+        [$path, $query] = array_pad(explode('?', $beforeFragment, 2), 2, null);
+
+        if (preg_match('#^(?:\.{0,2}/)?['.self::URL_PATH_CHARS.']*$#', $path) !== 1) {
+            return false;
+        }
+
+        if ($query === null) {
+            return true;
+        }
+
+        $pair = '['.self::URL_KEY_CHARS.']+=['.self::URL_VALUE_CHARS.']*';
+
+        return preg_match('#^'.$pair.'(?:&'.$pair.')*$#', $query) === 1;
     }
 
     /**

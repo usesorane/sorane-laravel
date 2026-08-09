@@ -110,6 +110,24 @@ final class RouteSecretResolver
     }
 
     /**
+     * Whether the application defines any route that could contribute a path
+     * redaction at all.
+     *
+     * {@see SecretScrubber::scrubDeep()} calls this once so that a recursion
+     * over dozens of breadcrumb strings does not walk the route table per
+     * string: an application with no secret-bearing route can skip path
+     * resolution entirely.
+     */
+    public static function hasSensitiveParameterRoutes(): bool
+    {
+        try {
+            return self::routesWithSensitiveParameters() !== [];
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /**
      * The GET routes that declare at least one secret-bearing parameter.
      *
      * A route without one can never contribute a redaction, so it is not worth

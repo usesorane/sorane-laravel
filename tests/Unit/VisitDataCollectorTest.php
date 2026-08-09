@@ -139,6 +139,29 @@ test('it collects utm parameters', function (): void {
     expect($data['utm_term'])->toBe('laravel');
 });
 
+test('it reports the path decoded so one page is one entry', function (): void {
+    // The router rawurldecodes before matching, so these are all the same page;
+    // reporting the raw request line would fragment it in analytics.
+    $request = Request::create('https://example.com/%61dmin/us%65rs', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/admin/users');
+});
+
+test('it still redacts a sensitive segment that itself contains a percent sign', function (): void {
+    // Scrubbing runs before decoding for exactly this case: decoding first
+    // would turn the segment into `tok%41` and stop it matching the route's
+    // parameter value.
+    $request = requestWithRoute('https://example.com/invitations/tok%2541', 'invitations/{token}');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/invitations/[REDACTED]');
+});
+
 test('it drops a non-string campaign parameter', function (): void {
     // `?utm_source[]=x` yields an array, which violates the API's string|null
     // schema and gets the whole batch rejected.

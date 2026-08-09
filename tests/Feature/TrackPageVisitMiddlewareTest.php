@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
+use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 
 test('it tracks page visits for normal requests', function (): void {
@@ -40,17 +42,25 @@ test('it does not track requests without user agent', function (): void {
 test('it respects excluded paths configuration', function (): void {
     Bus::fake();
 
+    // Real routes, so the request reaches the middleware: a routeless path
+    // 404s during routing and would pass this test with the exclusion check
+    // deleted entirely.
+    Route::get('/admin/dashboard', fn () => response('OK'))
+        ->middleware(['web', TrackPageVisit::class]);
+    Route::get('/api/users', fn () => response('OK'))
+        ->middleware(['web', TrackPageVisit::class]);
+
     config(['ranetrace.website_analytics.excluded_paths' => ['admin', 'api']]);
 
     $this->withHeaders([
         'User-Agent' => 'Mozilla/5.0',
-    ])->get('/admin/dashboard');
+    ])->get('/admin/dashboard')->assertStatus(200);
 
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 
     $this->withHeaders([
         'User-Agent' => 'Mozilla/5.0',
-    ])->get('/api/users');
+    ])->get('/api/users')->assertStatus(200);
 
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
@@ -58,6 +68,9 @@ test('it respects excluded paths configuration', function (): void {
 test('it falls back to default excluded paths when the config key is absent', function (): void {
     Bus::fake();
     Cache::flush();
+
+    Route::get('/admin/dashboard', fn () => response('OK'))
+        ->middleware(['web', TrackPageVisit::class]);
 
     // Simulate a published config that removed the excluded_paths key entirely.
     $analytics = config('ranetrace.website_analytics');
@@ -68,9 +81,34 @@ test('it falls back to default excluded paths when the config key is absent', fu
         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept' => 'text/html',
         'Accept-Language' => 'en-US',
-    ])->get('/admin/dashboard');
+    ])->get('/admin/dashboard')->assertStatus(200);
 
     // 'admin' is still excluded via TrackPageVisit::DEFAULT_EXCLUDED_PATHS.
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('it excludes a path whose first segment arrives percent-encoded', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // A real route is needed: without one the request 404s during routing and
+    // never reaches the middleware, which would pass this test for the wrong
+    // reason.
+    Route::get('/admin/dashboard', fn () => response('OK'))
+        ->middleware(['web', TrackPageVisit::class]);
+
+    config(['ranetrace.website_analytics.excluded_paths' => ['admin']]);
+
+    $headers = [
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ];
+
+    // Routes to the same excluded handler; $request->path() would still read
+    // `%61dmin/dashboard` and miss the exclusion list.
+    $this->withHeaders($headers)->get('/%61dmin/dashboard')->assertStatus(200);
+
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
@@ -144,6 +182,29 @@ test('it throttles duplicate visits', function (): void {
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1); // Still just 1
 });
 
+test('it throttles encoded variants of one path into a single bucket', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    $headers = [
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ];
+
+    $this->withHeaders($headers)->get('/test-page')->assertStatus(200);
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
+
+    // Same page, re-encoded request line: the router rawurldecodes and matches
+    // the same route, so this must not open a fresh throttle bucket.
+    $this->withHeaders($headers)->get('/%74est-page')->assertStatus(200);
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
+
+    // Lowercase hex is a third spelling of the same request.
+    $this->withHeaders($headers)->get('/%74est-%70age')->assertStatus(200);
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
+});
+
 test('it keeps throttling across a minute boundary within the throttle window', function (): void {
     Bus::fake();
     Cache::flush();
@@ -211,7 +272,7 @@ test('it filters requests without Accept-Language header', function (): void {
     // Verify no Accept-Language header
     expect($request->header('Accept-Language'))->toBeNull();
 
-    $middleware = new Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
+    $middleware = new TrackPageVisit;
     $response = $middleware->handle($request, function ($req) {
         return response('OK');
     });
@@ -466,7 +527,7 @@ function captureThroughMiddleware(string $uri, string $method = 'GET'): void
         $request->headers->set($name, $value);
     }
 
-    (new Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit)->handle(
+    (new TrackPageVisit)->handle(
         $request,
         fn (): Illuminate\Http\Response => response('OK')
     );

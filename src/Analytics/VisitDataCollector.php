@@ -37,7 +37,15 @@ class VisitDataCollector
 
         return [
             'url' => SecretScrubber::scrubUrlPath(SecretScrubber::scrubUrl($url), $sensitiveValues),
-            'path' => SecretScrubber::scrubPathSegments($path, $sensitiveValues),
+
+            // Reported decoded, so every spelling of one page (`/login`,
+            // `/%6Cogin`) is a single entry rather than an attacker-chosen
+            // supply of distinct ones — the router resolved them all to the
+            // same route. Scrubbing runs FIRST and on the raw path: the values
+            // resolved from the route are compared against rawurldecoded
+            // segments, so decoding up front would stop a token that itself
+            // contains a `%` from matching.
+            'path' => rawurldecode(SecretScrubber::scrubPathSegments($path, $sensitiveValues)),
             'ip' => $request->ip(), // Only used internally to resolve geo
             'user_agent' => $userAgent,
             'user_agent_hash' => FingerprintGenerator::generateUserAgentHash($request),

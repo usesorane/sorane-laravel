@@ -160,9 +160,16 @@ class TrackPageVisit
             return;
         }
 
-        $excludedPaths = config('ranetrace.website_analytics.excluded_paths', self::DEFAULT_EXCLUDED_PATHS);
-        // $request->path() is already trimmed of a leading slash.
-        $firstSegment = explode('/', $request->path())[0];
+        $excludedPaths = array_map(
+            static fn (mixed $path): string => mb_strtolower((string) $path),
+            (array) config('ranetrace.website_analytics.excluded_paths', self::DEFAULT_EXCLUDED_PATHS)
+        );
+
+        // decodedPath(), not path(): the router matches on the rawurldecoded
+        // path, so `/%61dmin/users` reaches the `admin` handler while
+        // `$request->path()` still reports `%61dmin/users` and would miss the
+        // exclusion. Both are already trimmed of a leading slash.
+        $firstSegment = mb_strtolower(explode('/', $request->decodedPath())[0]);
 
         if (in_array($firstSegment, $excludedPaths, true)) {
             return;
@@ -242,6 +249,11 @@ class TrackPageVisit
         // pass a check-then-set race. The key is NOT time-bucketed — the TTL alone
         // defines the window, so throttle_seconds works for any value (a minute
         // bucket would silently cap it at ~60s).
+        // The collector reports a decoded path, which is what makes this key
+        // sound: `/login`, `/%6Cogin` and `/%6cogin` all route to the same
+        // handler and now share ONE bucket, where keying on the raw request
+        // line handed an attacker an unlimited supply of distinct keys for a
+        // single URL.
         $cacheKey = 'ranetrace:visit:'.md5(
             $request->ip().'|'.
             $visitData['path']

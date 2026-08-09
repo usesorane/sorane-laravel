@@ -9,11 +9,14 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\FormatsUntrustedText;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class LatestErrorsTool extends Tool
 {
+    use FormatsUntrustedText;
+
     protected const VALID_STATUSES = ['open', 'resolved', 'ignored', 'snoozed', 'active', 'closed', 'all'];
 
     /**
@@ -57,6 +60,7 @@ class LatestErrorsTool extends Tool
         }
 
         $output = 'Found '.count($errors)." error(s):\n\n";
+        $output .= $this->untrustedTextNotice()."\n\n";
 
         foreach ($errors as $index => $error) {
             $output .= $this->formatError($index + 1, $error);
@@ -91,14 +95,16 @@ class LatestErrorsTool extends Tool
     }
 
     /**
-     * Format a single error for display.
+     * Format a single error for display. The message carries end-user-authored
+     * content, so it is neutralized into a single-line JSON string literal
+     * instead of being interpolated raw.
      *
      * @param  array<string, mixed>  $error
      */
     protected function formatError(int $index, array $error): string
     {
         $id = $error['id'] ?? 'unknown';
-        $message = $error['message'] ?? 'No message';
+        $message = $this->formatUntrustedText((string) ($error['message'] ?? 'No message'));
         $type = $error['type'] ?? 'unknown';
         $environment = $error['environment'] ?? 'unknown';
         $occurredAt = $error['occurred_at'] ?? 'unknown';

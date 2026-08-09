@@ -9,11 +9,14 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\FormatsUntrustedText;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class SearchErrorsTool extends Tool
 {
+    use FormatsUntrustedText;
+
     protected const VALID_PERIODS = ['1h', '6h', '24h', '7d', '30d', '90d'];
 
     protected const VALID_OCCURRENCE_LEVELS = ['critical', 'frequent', 'moderate', 'rare'];
@@ -282,6 +285,7 @@ class SearchErrorsTool extends Tool
         }
 
         $output .= "\n## Errors (".count($errors)." shown)\n\n";
+        $output .= $this->untrustedTextNotice()."\n\n";
 
         foreach ($errors as $index => $error) {
             $output .= $this->formatError($index + 1, $error);
@@ -302,7 +306,9 @@ class SearchErrorsTool extends Tool
     }
 
     /**
-     * Format a single error for display.
+     * Format a single error for display. The message and error type carry
+     * end-user-authored content, so they are neutralized into single-line
+     * JSON string literals instead of being interpolated raw.
      *
      * @param  array<string, mixed>  $error
      */
@@ -310,8 +316,8 @@ class SearchErrorsTool extends Tool
     {
         $id = $error['id'] ?? 'unknown';
         $type = $error['type'] ?? 'php';
-        $message = $error['message'] ?? 'No message';
-        $errorType = $error['error_type'] ?? 'Unknown';
+        $message = $this->formatUntrustedText((string) ($error['message'] ?? 'No message'));
+        $errorType = $this->formatUntrustedText((string) ($error['error_type'] ?? 'Unknown'));
         $environment = $error['environment'] ?? 'unknown';
         $occurrenceCount = $error['occurrence_count'] ?? 1;
         $firstOccurred = $error['first_occurred_at'] ?? 'unknown';

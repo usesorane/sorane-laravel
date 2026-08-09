@@ -9,12 +9,14 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\FormatsUntrustedText;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class GetErrorTool extends Tool
 {
+    use FormatsUntrustedText;
     use NormalizesIds;
 
     /**
@@ -83,22 +85,30 @@ class GetErrorTool extends Tool
     /**
      * Format the full error details for display.
      *
+     * The message, exception class and the stack trace, context, request and
+     * user blocks all carry end-user-authored content, so they are neutralized
+     * rather than interpolated raw into what the calling agent reads.
+     *
      * @param  array<string, mixed>  $error
      */
     protected function formatErrorDetails(array $error): string
     {
         $id = $error['id'] ?? 'unknown';
-        $message = $error['message'] ?? 'No message';
+        $message = $this->formatUntrustedText((string) ($error['message'] ?? 'No message'));
         $type = $error['type'] ?? 'unknown';
-        $exceptionClass = $error['exception_class'] ?? 'unknown';
+        $exceptionClass = $this->formatUntrustedText((string) ($error['exception_class'] ?? 'unknown'));
         $environment = $error['environment'] ?? 'unknown';
         $occurredAt = $error['occurred_at'] ?? 'unknown';
         $occurrences = $error['occurrences'] ?? 1;
         $file = $error['file'] ?? 'unknown';
         $line = $error['line'] ?? 'unknown';
 
+        $notice = $this->untrustedTextNotice();
+
         $output = <<<ERROR
         # Error Details
+
+        {$notice}
 
         **ID:** {$id}
         **Type:** {$type}
@@ -115,28 +125,28 @@ class GetErrorTool extends Tool
             $stackTrace = is_array($error['stack_trace'])
                 ? implode("\n", $error['stack_trace'])
                 : $error['stack_trace'];
-            $output .= "\n## Stack Trace\n```\n{$stackTrace}\n```\n";
+            $output .= "\n## Stack Trace\n".$this->formatUntrustedBlock((string) $stackTrace)."\n";
         }
 
         if (! empty($error['context'])) {
             $context = is_array($error['context'])
                 ? json_encode($error['context'], JSON_PRETTY_PRINT)
                 : $error['context'];
-            $output .= "\n## Context\n```json\n{$context}\n```\n";
+            $output .= "\n## Context\n".$this->formatUntrustedBlock((string) $context, 'json')."\n";
         }
 
         if (! empty($error['request'])) {
             $requestData = is_array($error['request'])
                 ? json_encode($error['request'], JSON_PRETTY_PRINT)
                 : $error['request'];
-            $output .= "\n## Request Data\n```json\n{$requestData}\n```\n";
+            $output .= "\n## Request Data\n".$this->formatUntrustedBlock((string) $requestData, 'json')."\n";
         }
 
         if (! empty($error['user'])) {
             $userData = is_array($error['user'])
                 ? json_encode($error['user'], JSON_PRETTY_PRINT)
                 : $error['user'];
-            $output .= "\n## User\n```json\n{$userData}\n```\n";
+            $output .= "\n## User\n".$this->formatUntrustedBlock((string) $userData, 'json')."\n";
         }
 
         return $output;

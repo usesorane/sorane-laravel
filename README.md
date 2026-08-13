@@ -223,7 +223,7 @@ The same works in any client that supports an `env` block on a server entry, wit
 RANETRACE_MCP_TOKEN=your-mcp-token-here
 ```
 
-> If you run `php artisan config:cache`, the token must be in `.env` (and the config cache rebuilt). A cached config is read from disk and never sees the environment your MCP client passes in, so a client-side `env` block alone leaves the server unregistered.
+> If you run `php artisan config:cache`, the token must be in `.env` (and the config cache rebuilt). A cached config is read from disk and never sees the environment your MCP client passes in, so a client-side `env` block alone leaves the server unregistered. Without a config cache, setting both is harmless: a real process env var (the client's env block) wins over `.env` in Laravel.
 
 ### What the tools answer
 

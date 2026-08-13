@@ -72,7 +72,7 @@ Prefer the MCP client's own server entry, so the credential stays with the clien
 claude mcp add ranetrace -e RANETRACE_MCP_TOKEN=<token> -- php artisan mcp:start ranetrace
 ```
 
-`.env` works too, and is required for apps that run `config:cache`: a cached config never sees the env block the client passes in.
+`.env` works too, and is required for apps that run `config:cache`: a cached config never sees the env block the client passes in. When both are set, the client's env block wins: Laravel reads a real process env var over `.env`.
 
 Without a token no MCP server is registered at all. An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
 

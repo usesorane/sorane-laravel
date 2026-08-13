@@ -42,13 +42,13 @@ test('createNote sends correct request to API', function (): void {
     });
 });
 
-test('createNote returns error when API key is not configured', function (): void {
+test('createNote returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->createNote('123', ['body' => 'Test']);
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'] ?? null)->toBe('API key not configured');
+    expect($result['error'] ?? null)->toBe(missingMcpTokenMessage());
 });
 
 test('createNote handles 404 error when error not found', function (): void {
@@ -159,13 +159,13 @@ test('listNotes sends query parameters correctly', function (): void {
     });
 });
 
-test('listNotes returns error when API key is not configured', function (): void {
+test('listNotes returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->listNotes('123');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'] ?? null)->toBe('API key not configured');
+    expect($result['error'] ?? null)->toBe(missingMcpTokenMessage());
 });
 
 test('listNotes handles 404 when error not found', function (): void {
@@ -207,13 +207,13 @@ test('getNote retrieves a specific note', function (): void {
     expect($result['data']['note']['body'])->toBe('Detailed investigation notes');
 });
 
-test('getNote returns error when API key is not configured', function (): void {
+test('getNote returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->getNote('123', '456');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'] ?? null)->toBe('API key not configured');
+    expect($result['error'] ?? null)->toBe(missingMcpTokenMessage());
 });
 
 test('getNote handles 404 when note not found', function (): void {
@@ -259,13 +259,13 @@ test('updateNote sends correct request to API', function (): void {
     });
 });
 
-test('updateNote returns error when API key is not configured', function (): void {
+test('updateNote returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->updateNote('123', '456', ['body' => 'Test']);
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'] ?? null)->toBe('API key not configured');
+    expect($result['error'] ?? null)->toBe(missingMcpTokenMessage());
 });
 
 test('updateNote handles 403 when trying to update others note', function (): void {
@@ -315,13 +315,13 @@ test('deleteNote sends correct request to API', function (): void {
     });
 });
 
-test('deleteNote returns error when API key is not configured', function (): void {
+test('deleteNote returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->deleteNote('123', '456');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'] ?? null)->toBe('API key not configured');
+    expect($result['error'] ?? null)->toBe(missingMcpTokenMessage());
 });
 
 test('deleteNote handles 403 when trying to delete others note', function (): void {
@@ -392,13 +392,13 @@ test('createNotesBulk sends correct request to API', function (): void {
     });
 });
 
-test('createNotesBulk returns error when API key is not configured', function (): void {
+test('createNotesBulk returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->createNotesBulk('123', ['notes' => [['body' => 'Test']]]);
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'] ?? null)->toBe('API key not configured');
+    expect($result['error'] ?? null)->toBe(missingMcpTokenMessage());
 });
 
 test('createNotesBulk handles 422 validation error', function (): void {

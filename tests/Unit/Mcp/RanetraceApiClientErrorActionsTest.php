@@ -61,13 +61,13 @@ test('resolveError sends javascript type correctly', function (): void {
     });
 });
 
-test('resolveError returns error when API key is not configured', function (): void {
+test('resolveError returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->resolveError('123');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 test('resolveError handles 404 error', function (): void {
@@ -123,13 +123,13 @@ test('reopenError sends correct request to API', function (): void {
     });
 });
 
-test('reopenError returns error when API key is not configured', function (): void {
+test('reopenError returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->reopenError('123');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 // ============================================
@@ -159,13 +159,13 @@ test('ignoreError sends correct request to API', function (): void {
     });
 });
 
-test('ignoreError returns error when API key is not configured', function (): void {
+test('ignoreError returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->ignoreError('123');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 // ============================================
@@ -195,13 +195,13 @@ test('unignoreError sends correct request to API', function (): void {
     });
 });
 
-test('unignoreError returns error when API key is not configured', function (): void {
+test('unignoreError returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->unignoreError('123');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 // ============================================
@@ -261,13 +261,13 @@ test('snoozeError handles javascript type', function (): void {
     });
 });
 
-test('snoozeError returns error when API key is not configured', function (): void {
+test('snoozeError returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->snoozeError('123', ['duration' => '24h']);
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 test('snoozeError handles 422 validation error', function (): void {
@@ -310,13 +310,13 @@ test('unsnoozeError sends correct request to API', function (): void {
     });
 });
 
-test('unsnoozeError returns error when API key is not configured', function (): void {
+test('unsnoozeError returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->unsnoozeError('123');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 // ============================================
@@ -356,13 +356,13 @@ test('deleteError sends javascript type correctly', function (): void {
     });
 });
 
-test('deleteError returns error when API key is not configured', function (): void {
+test('deleteError returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->deleteError('123');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 test('deleteError handles 404 error', function (): void {
@@ -445,13 +445,13 @@ test('getErrorActivity sends type parameter', function (): void {
     });
 });
 
-test('getErrorActivity returns error when API key is not configured', function (): void {
+test('getErrorActivity returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->getErrorActivity('123');
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 test('getErrorActivity handles 404 error', function (): void {
@@ -512,13 +512,13 @@ test('bulkResolveErrors sends javascript type', function (): void {
     });
 });
 
-test('bulkResolveErrors returns error when API key is not configured', function (): void {
+test('bulkResolveErrors returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->bulkResolveErrors(['123']);
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 test('bulkResolveErrors handles 422 validation error', function (): void {
@@ -560,13 +560,13 @@ test('bulkReopenErrors sends correct request to API', function (): void {
     });
 });
 
-test('bulkReopenErrors returns error when API key is not configured', function (): void {
+test('bulkReopenErrors returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->bulkReopenErrors(['123']);
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 // ============================================
@@ -596,13 +596,13 @@ test('bulkIgnoreErrors sends correct request to API', function (): void {
     });
 });
 
-test('bulkIgnoreErrors returns error when API key is not configured', function (): void {
+test('bulkIgnoreErrors returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->bulkIgnoreErrors(['123']);
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 // ============================================
@@ -631,13 +631,13 @@ test('bulkDeleteErrors sends correct request to API', function (): void {
     });
 });
 
-test('bulkDeleteErrors returns error when API key is not configured', function (): void {
+test('bulkDeleteErrors returns the MCP token guidance when no token is configured', function (): void {
     config(['ranetrace.key' => null]);
     $client = new RanetraceApiClient(null);
     $result = $client->bulkDeleteErrors(['123']);
 
     expect($result['success'])->toBeFalse();
-    expect($result['error'])->toBe('API key not configured');
+    expect($result['error'])->toBe(missingMcpTokenMessage());
 });
 
 // ============================================

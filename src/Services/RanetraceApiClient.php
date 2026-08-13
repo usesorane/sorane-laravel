@@ -166,7 +166,7 @@ class RanetraceApiClient
     public function getLatestErrors(array $params = []): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -195,7 +195,7 @@ class RanetraceApiClient
     public function getError(string $errorId): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -225,7 +225,7 @@ class RanetraceApiClient
     public function getErrorStats(array $params = []): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -255,7 +255,7 @@ class RanetraceApiClient
     public function createNote(string $errorId, array $data): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -286,7 +286,7 @@ class RanetraceApiClient
     public function listNotes(string $errorId, array $params = []): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -315,7 +315,7 @@ class RanetraceApiClient
     public function getNote(string $errorId, string $noteId): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -345,7 +345,7 @@ class RanetraceApiClient
     public function updateNote(string $errorId, string $noteId, array $data): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -375,7 +375,7 @@ class RanetraceApiClient
     public function deleteNote(string $errorId, string $noteId): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -405,7 +405,7 @@ class RanetraceApiClient
     public function createNotesBulk(string $errorId, array $data): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -476,7 +476,7 @@ class RanetraceApiClient
     public function snoozeError(string $errorId, array $data, string $type = 'php'): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -516,7 +516,7 @@ class RanetraceApiClient
     public function deleteError(string $errorId, string $type = 'php'): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -547,7 +547,7 @@ class RanetraceApiClient
     public function getErrorActivity(string $errorId, array $params = [], string $type = 'php'): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -642,7 +642,7 @@ class RanetraceApiClient
     public function searchErrors(array $params = []): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -692,7 +692,7 @@ class RanetraceApiClient
     protected function performErrorAction(string $errorId, string $action, string $type): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {
@@ -723,7 +723,7 @@ class RanetraceApiClient
     protected function performBulkErrorAction(array $errorIds, string $action, string $type): array
     {
         if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
         }
 
         try {

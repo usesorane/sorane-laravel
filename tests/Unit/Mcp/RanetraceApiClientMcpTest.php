@@ -174,7 +174,7 @@ test('MCP methods return error when api key is missing', function (string $metho
     $result = $client->{$method}(...$args);
 
     expect($result['success'])->toBeFalse()
-        ->and($result['error'])->toBe('API key not configured');
+        ->and($result['error'])->toBe(missingMcpTokenMessage());
     Http::assertNothingSent();
 })->with([
     'getLatestErrors' => ['getLatestErrors', []],

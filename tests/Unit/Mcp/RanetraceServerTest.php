@@ -14,9 +14,16 @@ use Ranetrace\Laravel\Mcp\Tools\CreateNoteTool;
 use Ranetrace\Laravel\Mcp\Tools\DeleteErrorTool;
 use Ranetrace\Laravel\Mcp\Tools\DeleteNoteTool;
 use Ranetrace\Laravel\Mcp\Tools\ErrorStatsTool;
+use Ranetrace\Laravel\Mcp\Tools\GetBrokenLinksTool;
+use Ranetrace\Laravel\Mcp\Tools\GetCertificateStatusTool;
+use Ranetrace\Laravel\Mcp\Tools\GetDomainStatusTool;
 use Ranetrace\Laravel\Mcp\Tools\GetErrorActivityTool;
 use Ranetrace\Laravel\Mcp\Tools\GetErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\GetLighthouseAuditTool;
+use Ranetrace\Laravel\Mcp\Tools\GetMonitorStatusTool;
 use Ranetrace\Laravel\Mcp\Tools\GetNoteTool;
+use Ranetrace\Laravel\Mcp\Tools\GetPerformanceStatsTool;
+use Ranetrace\Laravel\Mcp\Tools\GetUptimeStatusTool;
 use Ranetrace\Laravel\Mcp\Tools\IgnoreErrorTool;
 use Ranetrace\Laravel\Mcp\Tools\LatestErrorsTool;
 use Ranetrace\Laravel\Mcp\Tools\ListNotesTool;
@@ -70,6 +77,22 @@ test('instructions mention error state functionality', function (): void {
     $instructions = getServerProperty('instructions');
 
     expect($instructions)->toContain('resolve');
+});
+
+test('instructions mention the monitor status question', function (): void {
+    $instructions = getServerProperty('instructions');
+
+    expect($instructions)->toContain('get-monitor-status')
+        ->toContain('needs a look');
+});
+
+test('instructions tell the agent the verdict comes before the data', function (): void {
+    $instructions = getServerProperty('instructions');
+
+    expect($instructions)->toContain('verdict first')
+        ->toContain('what we found')
+        ->toContain('why it matters')
+        ->toContain('what to do');
 });
 
 test('instructions mention search functionality', function (): void {
@@ -203,6 +226,13 @@ test('registers the full expected tool list', function (): void {
         BulkIgnoreErrorsTool::class,
         BulkDeleteErrorsTool::class,
         BulkRestoreErrorsTool::class,
+        GetMonitorStatusTool::class,
+        GetUptimeStatusTool::class,
+        GetPerformanceStatsTool::class,
+        GetLighthouseAuditTool::class,
+        GetCertificateStatusTool::class,
+        GetDomainStatusTool::class,
+        GetBrokenLinksTool::class,
     ];
 
     $actual = getServerProperty('tools');
@@ -212,4 +242,11 @@ test('registers the full expected tool list', function (): void {
     foreach ($expected as $tool) {
         expect($actual)->toContain($tool);
     }
+});
+
+test('the registered tools are exactly the TOOLS constant the service provider binds against', function (): void {
+    // The contextual MCP-token binding is driven by RanetraceServer::TOOLS. If
+    // the property ever stopped mirroring the constant, a registered tool could
+    // resolve the default client and authenticate with the ingest key instead.
+    expect(getServerProperty('tools'))->toBe(RanetraceServer::TOOLS);
 });

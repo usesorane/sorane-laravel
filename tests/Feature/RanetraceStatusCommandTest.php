@@ -43,6 +43,18 @@ test('status warns about a stalled drain when buffered items wait past the drain
         ->assertSuccessful();
 });
 
+test('status reports the ingest key and the MCP token as separate credentials', function (): void {
+    Config::set('ranetrace.key', 'ingest-key');
+    Config::set('ranetrace.mcp.token', null);
+
+    $this->artisan('ranetrace:status')
+        ->expectsOutputToContain('Ingest API Key: Configured')
+        // A production host is expected to carry no MCP token, so its absence
+        // is stated rather than reported as a problem.
+        ->expectsOutputToContain('MCP Token: Not set')
+        ->assertSuccessful();
+});
+
 test('status outputs successfully with the --json flag', function (): void {
     $this->artisan('ranetrace:status', ['--json' => true])
         ->assertSuccessful();

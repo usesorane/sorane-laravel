@@ -84,6 +84,80 @@ class RanetraceApiClient
     }
 
     /**
+     * Every enabled monitor's verdict for the authenticated website — the
+     * "which of my monitors needs a look" call.
+     *
+     * @return array<string, mixed>
+     */
+    public function getMonitorStatus(): array
+    {
+        return $this->getFromMcpApi('/monitors/status');
+    }
+
+    /**
+     * Availability for the authenticated website: up or down, the 24h uptime
+     * figure, and the recent outages behind it.
+     *
+     * @return array<string, mixed>
+     */
+    public function getUptimeStatus(): array
+    {
+        return $this->getFromMcpApi('/monitors/uptime/latest');
+    }
+
+    /**
+     * Response-time health for the authenticated website: the 24h average and
+     * where that time actually goes.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPerformanceStats(): array
+    {
+        return $this->getFromMcpApi('/monitors/performance/latest');
+    }
+
+    /**
+     * The latest Lighthouse audit for the authenticated website, plus the
+     * previous run's scores for trend.
+     *
+     * @return array<string, mixed>
+     */
+    public function getLighthouseAudit(): array
+    {
+        return $this->getFromMcpApi('/monitors/lighthouse/latest');
+    }
+
+    /**
+     * Certificate and HTTPS health for the authenticated website.
+     *
+     * @return array<string, mixed>
+     */
+    public function getCertificateStatus(): array
+    {
+        return $this->getFromMcpApi('/monitors/certificate/latest');
+    }
+
+    /**
+     * Domain registration health for the authenticated website.
+     *
+     * @return array<string, mixed>
+     */
+    public function getDomainStatus(): array
+    {
+        return $this->getFromMcpApi('/monitors/domain/latest');
+    }
+
+    /**
+     * The broken links the latest completed site audit found.
+     *
+     * @return array<string, mixed>
+     */
+    public function getBrokenLinks(): array
+    {
+        return $this->getFromMcpApi('/monitors/broken-links/latest');
+    }
+
+    /**
      * Get the latest errors from Ranetrace.
      *
      * @param  array{limit?: int, environment?: string, type?: string}  $params
@@ -766,7 +840,48 @@ class RanetraceApiClient
     }
 
     /**
+     * Perform a read-only GET against an MCP API endpoint.
+     *
+     * The monitor endpoints take no parameters — the token already scopes the
+     * call to one website — so this only varies by path. Shared so a new
+     * monitor endpoint cannot drift from the auth header, retry behavior and
+     * timeouts the other read calls use.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    protected function getFromMcpApi(string $path, array $params = []): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse($this->mcpTokenRequiredMessage(null));
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Ranetrace-API-Version' => '1.0',
+                ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
+                ->timeout($this->timeout)
+                ->get($this->apiUrl.$path, $params)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
      * Format an API response into the package's standard result shape.
+     *
+     * A failed response carries the API's error envelope
+     * (`{success, message, error_code}`), so the message and the stable code
+     * are lifted out here rather than in each of the tools: every tool, the
+     * error and note ones included, then reports what the API actually said
+     * instead of a generic "unknown error".
      *
      * @return array<string, mixed>
      */
@@ -786,9 +901,67 @@ class RanetraceApiClient
 
         if (! $isValidData && $response->successful()) {
             $result['error'] = 'Invalid response format';
+
+            return $result;
+        }
+
+        if (! $response->successful() && $isValidData) {
+            $errorCode = is_string($data['error_code'] ?? null) ? $data['error_code'] : null;
+            $message = is_string($data['message'] ?? null) && $data['message'] !== ''
+                ? $data['message']
+                : null;
+
+            if ($errorCode !== null) {
+                $result['error_code'] = $errorCode;
+            }
+
+            $error = $this->failureMessage($errorCode, $message);
+
+            if ($error !== null) {
+                $result['error'] = $error;
+            }
         }
 
         return $result;
+    }
+
+    /**
+     * The message a failed API response should surface to the calling agent.
+     *
+     * Two error codes are answered specifically rather than passed through as
+     * one more failure: `MCP_TOKEN_REQUIRED` is a setup problem the agent can
+     * fix if it is told how, and `MONITOR_DISABLED` is a true answer about the
+     * account ("nobody is watching this") that must reach the agent intact.
+     * Everything else is the API's own message, or null so the calling tool
+     * keeps its own wording.
+     */
+    protected function failureMessage(?string $errorCode, ?string $message): ?string
+    {
+        return match ($errorCode) {
+            'MCP_TOKEN_REQUIRED' => $this->mcpTokenRequiredMessage($message),
+            'MONITOR_DISABLED' => $message,
+            default => $message,
+        };
+    }
+
+    /**
+     * Turn a missing/insufficient MCP token into instructions an agent can act
+     * on. The API's own message names the ability that was required, so it
+     * leads; the "create one" sentence is only added when the API did not
+     * already say it, and where to put the token is always appended (the API
+     * cannot know it is a Laravel app talking to it).
+     */
+    protected function mcpTokenRequiredMessage(?string $message): string
+    {
+        $parts = [$message ?? 'This endpoint requires a Ranetrace MCP token.'];
+
+        if (! str_contains(mb_strtolower($parts[0]), '/mcp')) {
+            $parts[] = "Create one on the website's /mcp page in Ranetrace.";
+        }
+
+        $parts[] = 'Set it as RANETRACE_MCP_TOKEN in your MCP client\'s server entry (or in .env), then restart the MCP server.';
+
+        return implode(' ', $parts);
     }
 
     /**

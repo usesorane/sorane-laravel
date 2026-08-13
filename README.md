@@ -187,6 +187,51 @@ The `TrackPageVisit` middleware is automatically added to the `web` middleware g
 
 See the [Ranetrace website](https://ranetrace.com) for dashboard setup and configuration details.
 
+## MCP server
+
+Ranetrace ships an MCP server so an agent can investigate errors and read your website's monitor verdicts without leaving the editor. It needs `laravel/mcp` installed, and an MCP token, which you create on your website's `/mcp` page in Ranetrace.
+
+The MCP token is a separate credential from `RANETRACE_KEY`. The key sends captured data in and lives on every production server; the token reads data back out and belongs on the machine running the MCP client. Without a token no MCP server is registered at all, which is what you want in production.
+
+### Configure it in your MCP client
+
+Put the token in the server entry, so it stays with the client that uses it rather than in your application's environment:
+
+```bash
+claude mcp add ranetrace -e RANETRACE_MCP_TOKEN=<token> -- php artisan mcp:start ranetrace
+```
+
+The same works in any client that supports an `env` block on a server entry, with local scope:
+
+```json
+{
+  "mcpServers": {
+    "ranetrace": {
+      "command": "php",
+      "args": ["artisan", "mcp:start", "ranetrace"],
+      "env": {
+        "RANETRACE_MCP_TOKEN": "<token>"
+      }
+    }
+  }
+}
+```
+
+### Or configure it in .env
+
+```env
+RANETRACE_MCP_TOKEN=your-mcp-token-here
+```
+
+> If you run `php artisan config:cache`, the token must be in `.env` (and the config cache rebuilt). A cached config is read from disk and never sees the environment your MCP client passes in, so a client-side `env` block alone leaves the server unregistered.
+
+### What the tools answer
+
+- Errors: search and investigate with filtering, full error details, statistics, activity, investigation notes, and error state (resolve, ignore, snooze, delete, restore).
+- Monitors: which of your monitors needs a look, and the detail behind any one of them (uptime, performance, Lighthouse, certificate, domain, broken links).
+
+Every monitor tool answers verdict first: what we found, why it matters, what to do, the same guidance you read on the dashboard, with the raw measurements following as its evidence.
+
 ## Health Check
 
 The package gives you two ways to see what it's doing locally: a CLI command and an in-app dashboard. Both read the same underlying diagnostics, so they can never disagree.

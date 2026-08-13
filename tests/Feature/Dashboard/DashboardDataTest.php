@@ -25,8 +25,39 @@ test('collectStatus returns the canonical status structure', function (): void {
         ->and($status['buffers'])->toHaveKeys(['total', 'max_per_feature', 'features'])
         ->and($status['buffers']['features'])->toHaveKeys(RanetraceBatchBuffer::TYPES)
         ->and($status['drain'])->toHaveKeys(['last_batch', 'stalled'])
-        ->and($status['config'])->toHaveKeys(['enabled', 'api_key_configured', 'cache_driver', 'queue_name'])
+        ->and($status['config'])->toHaveKeys(['enabled', 'api_key_configured', 'mcp_token_configured', 'cache_driver', 'queue_name'])
         ->and($status['config']['api_key_configured'])->toBeTrue();
+});
+
+test('the ingest key and the MCP token are reported separately', function (): void {
+    // Two credentials with opposite jobs: an install carrying one must not
+    // report the other as present. Only presence is reported, never a value.
+    Config::set('ranetrace.key', 'ingest-key');
+    Config::set('ranetrace.mcp.token', null);
+
+    $config = app(DashboardData::class)->collectStatus()['config'];
+
+    expect($config['api_key_configured'])->toBeTrue()
+        ->and($config['mcp_token_configured'])->toBeFalse()
+        ->and($config)->not->toContain('ingest-key');
+});
+
+test('the MCP server surface follows the MCP token, not the ingest key', function (): void {
+    Config::set('ranetrace.key', 'ingest-key');
+    Config::set('ranetrace.mcp.token', null);
+
+    $surface = collect(app(DashboardData::class)->registeredSurfaces())
+        ->firstWhere('label', 'MCP server');
+
+    expect($surface['ok'])->toBeFalse()
+        ->and($surface['note'])->toContain('RANETRACE_MCP_TOKEN');
+
+    Config::set('ranetrace.mcp.token', 'mcp-token');
+
+    $surface = collect(app(DashboardData::class)->registeredSurfaces())
+        ->firstWhere('label', 'MCP server');
+
+    expect($surface['ok'])->toBeTrue();
 });
 
 test('a numeric-string last-batch timestamp (Redis-style) counts as a recent drain', function (): void {

@@ -1,6 +1,6 @@
 ---
 name: ranetrace-error-tracking
-description: Track, investigate, and manage application errors with Ranetrace, including MCP tools for AI-assisted debugging.
+description: Track, investigate, and manage application errors with Ranetrace, including the MCP tools for AI-assisted debugging and for reading the monitored website's verdicts (uptime, performance, Lighthouse, certificate, domain, broken links).
 ---
 
 # Ranetrace Error Tracking
@@ -60,7 +60,21 @@ Each error report includes:
 
 ## MCP Tools for Error Investigation
 
-The Ranetrace MCP server provides 24 tools for AI-assisted error investigation. These are available when `laravel/mcp` is installed.
+The Ranetrace MCP server provides 31 tools: the 24 error and note tools below, plus 7 monitor tools (see *Monitor tools* at the end). They are available when `laravel/mcp` is installed and an MCP token is configured.
+
+### The MCP token is not the ingest key
+
+The tools authenticate with `RANETRACE_MCP_TOKEN`, a separate credential from `RANETRACE_KEY`. The key writes captured telemetry in and lives on every server; the token reads data back out and belongs on the machine running the MCP client. Create it on the website's `/mcp` page in Ranetrace.
+
+Prefer the MCP client's own server entry, so the credential stays with the client that uses it:
+
+```bash
+claude mcp add ranetrace -e RANETRACE_MCP_TOKEN=<token> -- php artisan mcp:start ranetrace
+```
+
+`.env` works too, and is required for apps that run `config:cache`: a cached config never sees the env block the client passes in.
+
+Without a token no MCP server is registered at all. An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
 
 ### Retrieving Errors
 
@@ -105,6 +119,24 @@ The Ranetrace MCP server provides 24 tools for AI-assisted error investigation. 
 | `GetNoteTool` | Get a specific note |
 | `UpdateNoteTool` | Update a note |
 | `DeleteNoteTool` | Delete a note |
+
+## Monitor Tools
+
+The same MCP server also answers for the website being monitored, not only the application's errors.
+
+| Tool | Description |
+|---|---|
+| `GetMonitorStatusTool` | Which of my monitors needs a look: every enabled monitor with its verdict |
+| `GetUptimeStatusTool` | Up or down, 24h uptime, and the recent outages |
+| `GetPerformanceStatsTool` | 24h average response time and where that time goes |
+| `GetLighthouseAuditTool` | Latest Lighthouse scores, metrics, trend, and ranked opportunities |
+| `GetCertificateStatusTool` | HTTPS, issuer, validity window, days until expiry |
+| `GetDomainStatusTool` | Registrar, expiry, DNSSEC, registrar locks |
+| `GetBrokenLinksTool` | Broken links from the latest site audit, with the page each was found on |
+
+None of them takes parameters: the MCP token already scopes every call to one website.
+
+Each answers **verdict first** — what we found, why it matters, what to do — with the raw measurements following as evidence. Read the verdict and pass its wording on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` instead of returning stale figures, and the tool surfaces that message as-is.
 
 ## Testing
 

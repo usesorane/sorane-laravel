@@ -198,7 +198,11 @@ class DashboardData
             'failed_jobs_last_24h' => $failedJobsCount,
             'config' => [
                 'enabled' => config('ranetrace.enabled', true),
+                // Two credentials, reported separately: the ingest key sends
+                // captured data in, the MCP token reads it back out. Only
+                // whether each is set is reported, never the value.
                 'api_key_configured' => ! empty(config('ranetrace.key')),
+                'mcp_token_configured' => ! empty(config('ranetrace.mcp.token')),
                 'cache_driver' => config('ranetrace.batch.cache_driver', 'file'),
                 'queue_name' => config('ranetrace.batch.queue_name', 'default'),
             ],
@@ -272,9 +276,12 @@ class DashboardData
             $webGroup = app('router')->getMiddlewareGroups()['web'] ?? [];
             $pageVisitActive = in_array(TrackPageVisit::class, $webGroup, true);
 
+            // The MCP server is gated on the MCP token, not the ingest key —
+            // the two are different credentials and an ingest key alone gets a
+            // 403 from every MCP endpoint.
             $mcpActive = class_exists(\Laravel\Mcp\Facades\Mcp::class)
                 && config('ranetrace.mcp.enabled', true)
-                && ! empty(config('ranetrace.key'));
+                && ! empty(config('ranetrace.mcp.token'));
 
             $ranetraceChannel = config()->has('logging.channels.ranetrace');
 
@@ -283,7 +290,7 @@ class DashboardData
                 $this->surface('Dashboard route', Route::has('ranetrace.dashboard')),
                 $this->surface('Page-visit middleware (web group)', $pageVisitActive, 'Active only when website_analytics.enabled'),
                 $this->surface('@ranetraceErrorTracking Blade directive', isset(Blade::getCustomDirectives()['ranetraceErrorTracking'])),
-                $this->surface('MCP server', $mcpActive, 'Needs laravel/mcp + mcp.enabled + API key'),
+                $this->surface('MCP server', $mcpActive, 'Needs laravel/mcp + mcp.enabled + RANETRACE_MCP_TOKEN'),
                 $this->surface('Internal log channel', config()->has('logging.channels.ranetrace_internal')),
                 $this->surface('Ranetrace log channel', $ranetraceChannel),
             ];

@@ -130,8 +130,26 @@ return [
         'stderr_fallback' => env('RANETRACE_INTERNAL_STDERR_FALLBACK', true),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | MCP Server
+    |--------------------------------------------------------------------------
+    |
+    | The MCP server reads your Ranetrace account through a *different*
+    | credential than the ingest key at the top of this file. `key` writes
+    | captured telemetry in; `token` reads errors, notes and monitor verdicts
+    | back out, scoped by the abilities it was created with. They are
+    | deliberately not interchangeable: an ingest key is deployed to every
+    | production server, while an MCP token belongs on the developer machine
+    | running the MCP client.
+    |
+    | Create the token on the website's /mcp page in Ranetrace. Without it no
+    | MCP server is registered at all, which is what you want in production.
+    |
+    */
     'mcp' => [
         'enabled' => env('RANETRACE_MCP_ENABLED', true),
+        'token' => env('RANETRACE_MCP_TOKEN'),
     ],
 
     /*

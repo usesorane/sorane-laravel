@@ -18,6 +18,9 @@ All notable changes to `ranetrace-laravel` will be documented in this file.
 - The remaining MCP formatters neutralize untrusted values the way the error tools already did: `error-stats` top-error messages, and the note `body` and `author_name` in `get-note`, `create-note`, `update-note` and `list-notes`. Note content is developer-authored rather than end-user-authored, so this is defence in depth rather than a live path, but it means every string the MCP server hands an agent is now either server-generated or explicitly framed as data
 - The JavaScript error endpoint's `timestamp` and `breadcrumbs.*.timestamp` fields are capped at 64 characters. They had no length rule and nothing downstream bounded them, so an unauthenticated client could buffer an item limited only by `post_max_size` — large enough to draw a 413 that discards the whole batch (up to 1000 legitimate errors) and pauses JavaScript error capture for 15 minutes
 
+### Changed
+- Log records name their framework generically: the `extra` metadata attached to every shipped log is now `environment`, `php_version`, `framework` (`laravel`) and `framework_version`, replacing the `laravel_version` key. This matches the error payload's earlier move and the framework-agnostic PHP SDK's vocabulary, so the two SDKs describe the same host the same way. The backend accepts both spellings today; the legacy one is scheduled for removal once deployed SDKs have moved over
+
 ### Fixed
 - Website analytics no longer counts non-GET requests as page visits (form submissions, `broadcasting/auth`, Livewire/Inertia XHR)
 - Requests carrying the `X-Livewire` header are always skipped — Livewire 4 serves its endpoint from `/livewire-{hash}/update` (hash derived from `APP_KEY`), which the static `livewire` excluded-path entry can no longer match

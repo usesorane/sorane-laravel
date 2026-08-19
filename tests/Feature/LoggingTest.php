@@ -37,8 +37,10 @@ test('it includes environment information', function (): void {
 
     Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         return isset($job->getLogData()['extra']['environment'])
-            && isset($job->getLogData()['extra']['laravel_version'])
-            && isset($job->getLogData()['extra']['php_version']);
+            && $job->getLogData()['extra']['framework'] === 'laravel'
+            && $job->getLogData()['extra']['framework_version'] === app()->version()
+            && isset($job->getLogData()['extra']['php_version'])
+            && ! array_key_exists('laravel_version', $job->getLogData()['extra']);
     });
 });
 
@@ -56,10 +58,10 @@ test('it preserves environment metadata even when the extra payload is oversized
         $extra = $job->getLogData()['extra'];
 
         // The oversized user extra is dropped wholesale, but the small,
-        // known-safe environment trio still survives for triage.
+        // known-safe environment metadata still survives for triage.
         return isset($extra['_truncated'])
             && ! isset($extra['huge'])
-            && isset($extra['environment'], $extra['laravel_version'], $extra['php_version']);
+            && isset($extra['environment'], $extra['framework'], $extra['framework_version'], $extra['php_version']);
     });
 });
 

@@ -75,8 +75,9 @@ class RanetraceLogHandler extends AbstractProcessingHandler
             );
 
             // Cap only the user-supplied extra, then always attach the small,
-            // known-safe environment trio. This way triage metadata survives
-            // even when the user extra is dropped wholesale for being oversized.
+            // known-safe environment metadata. This way triage metadata
+            // survives even when the user extra is dropped wholesale for being
+            // oversized.
             $userExtra = PayloadSizer::capBytes(
                 SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($record->extra)),
                 self::MAX_EXTRA_BYTES,
@@ -85,8 +86,12 @@ class RanetraceLogHandler extends AbstractProcessingHandler
 
             $extra = array_merge((array) $userExtra, [
                 'environment' => config('app.env'),
-                'laravel_version' => app()->version(),
                 'php_version' => phpversion(),
+                // The generic pair shared with the PHP SDK's extra vocabulary;
+                // the legacy `laravel_version` spelling is retired, matching
+                // the error payload's move.
+                'framework' => 'laravel',
+                'framework_version' => app()->version(),
             ]);
 
             $logData = [

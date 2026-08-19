@@ -6,6 +6,12 @@ return [
     'enabled' => env('RANETRACE_ENABLED', true),
     'key' => env('RANETRACE_KEY'),
 
+    /*
+     * Salt for the one-way analytics fingerprints (the visitor and session
+     * hashes). Left unset it falls back to the API key above, which every
+     * install has and which never travels inside a payload. Set it to rotate
+     * fingerprints without rotating the key.
+     */
     'fingerprint_salt' => env('RANETRACE_FINGERPRINT_SALT'),
 
     'errors' => [

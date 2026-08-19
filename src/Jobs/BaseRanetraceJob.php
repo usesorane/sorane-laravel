@@ -11,7 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\InternalLogger;
-use Ranetrace\Laravel\Utilities\PayloadSizer;
+use Ranetrace\Php\Support\PayloadSizer;
 use Throwable;
 
 /**

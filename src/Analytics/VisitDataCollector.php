@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Analytics;
 
 use Illuminate\Http\Request;
+use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Utilities\RouteSecretResolver;
-use Ranetrace\Laravel\Utilities\SecretScrubber;
 
 class VisitDataCollector
 {
@@ -28,6 +28,9 @@ class VisitDataCollector
         // there is none, the list is empty and both fields are left untouched.
         $sensitiveValues = RouteSecretResolver::forRequest($request);
 
+        $scrubber = Core::scrubber();
+        $fingerprints = Core::fingerprints();
+
         // The referrer describes a DIFFERENT request — the page the visitor came
         // from — so the current route says nothing about it. Same-origin
         // navigations send the full URL by default, which is exactly how a live
@@ -36,7 +39,7 @@ class VisitDataCollector
         $referrer = $request->headers->get('referer');
 
         return [
-            'url' => SecretScrubber::scrubUrlPath(SecretScrubber::scrubUrl($url), $sensitiveValues),
+            'url' => $scrubber->scrubUrlPath($scrubber->scrubUrl($url), $sensitiveValues),
 
             // Reported decoded, so every spelling of one page (`/login`,
             // `/%6Cogin`) is a single entry rather than an attacker-chosen
@@ -45,13 +48,13 @@ class VisitDataCollector
             // resolved from the route are compared against rawurldecoded
             // segments, so decoding up front would stop a token that itself
             // contains a `%` from matching.
-            'path' => rawurldecode(SecretScrubber::scrubPathSegments($path, $sensitiveValues)),
+            'path' => rawurldecode($scrubber->scrubPathSegments($path, $sensitiveValues)),
             'ip' => $request->ip(), // Only used internally to resolve geo
             'user_agent' => $userAgent,
-            'user_agent_hash' => FingerprintGenerator::generateUserAgentHash($request),
+            'user_agent_hash' => $fingerprints->generateUserAgentHash($userAgent),
 
-            'referrer' => SecretScrubber::scrubUrlPath(
-                SecretScrubber::scrubUrl($referrer),
+            'referrer' => $scrubber->scrubUrlPath(
+                $scrubber->scrubUrl($referrer),
                 RouteSecretResolver::forUrl($referrer)
             ),
 
@@ -66,7 +69,13 @@ class VisitDataCollector
 
             'country_code' => self::resolveCountryFromIp($request->ip()),
 
-            'session_id_hash' => FingerprintGenerator::generateSessionIdHash($request),
+            // Carbon rather than the generator's own clock, so a host (or a
+            // test) that freezes time sees the frozen day boundary.
+            'session_id_hash' => $fingerprints->generateSessionIdHash(
+                $request->ip(),
+                $userAgent,
+                now()->format('Y-m-d'),
+            ),
 
             'timestamp' => now()->toIso8601String(),
         ];

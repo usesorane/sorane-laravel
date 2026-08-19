@@ -8,14 +8,13 @@ use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
-use Ranetrace\Laravel\Analytics\FingerprintGenerator;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\CoreDiagnostics;
 use Ranetrace\Laravel\Support\InternalLogger;
-use Ranetrace\Laravel\Utilities\CoreScrubber;
 use Ranetrace\Laravel\Utilities\RouteSecretResolver;
 use Ranetrace\Php\Errors\ErrorContext;
 use Ranetrace\Php\Errors\PayloadBuilder;
@@ -96,15 +95,26 @@ class Ranetrace
             $isConsole = app()->runningInConsole();
             $request = request();
 
-            $eventData = (new EventItemBuilder(new CoreScrubber))->build(
+            $fingerprints = Core::fingerprints();
+
+            $eventData = (new EventItemBuilder(Core::scrubber()))->build(
                 $eventName,
                 $properties,
                 $user,
                 Carbon::now()->toIso8601String(),
                 $isConsole ? null : $request->fullUrl(),
-                FingerprintGenerator::generateUserAgentHash(),
-                FingerprintGenerator::generateSessionIdHash(),
-                $isConsole ? null : RouteSecretResolver::forRequest($request),
+                $fingerprints->generateUserAgentHash($request->userAgent()),
+                $fingerprints->generateSessionIdHash(
+                    $request->ip(),
+                    $request->userAgent(),
+                    // Carbon rather than the generator's own clock, so a host
+                    // (or a test) that freezes time sees the frozen day.
+                    Carbon::now()->format('Y-m-d'),
+                ),
+                // The event's own URL is this request's, whose route the router
+                // already bound; every OTHER url hiding in $properties describes
+                // some other request and gets its own lookup.
+                $isConsole ? null : RouteSecretResolver::resolver(RouteSecretResolver::forRequest($request)),
             );
 
             if (config('ranetrace.events.queue', true)) {
@@ -164,7 +174,7 @@ class Ranetrace
 
     private function payloadBuilder(): PayloadBuilder
     {
-        return new PayloadBuilder(CoreConfig::make(), new CoreScrubber, new CoreDiagnostics);
+        return new PayloadBuilder(CoreConfig::make(), Core::scrubber(), new CoreDiagnostics);
     }
 
     /**

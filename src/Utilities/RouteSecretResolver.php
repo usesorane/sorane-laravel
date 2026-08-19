@@ -4,28 +4,35 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Utilities;
 
+use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
+use Ranetrace\Laravel\Support\Core;
 use Throwable;
 
 /**
  * Resolves the secret-bearing values inside a URL's PATH, using the host
  * application's routes as the oracle.
  *
- * A path segment carries no marker saying "this is a token" — only the route
- * definition knows, because it named the segment `{token}`, `{hash}` or
- * `{invitation:token}`. Two situations exist, and they need different lookups:
+ * This is what Laravel adds to the shared scrubber and the reason this class
+ * stayed behind when `Utilities\SecretScrubber` was deleted: a path segment
+ * carries no marker saying "this is a token", only the route definition knows,
+ * because it named the segment `{token}`, `{hash}` or `{invitation:token}`, and
+ * a framework-agnostic library has no router to ask. Three situations exist:
  *
  * - {@see forRequest()} — the URL belongs to the request being handled, so the
- *   router already resolved and bound its route. Free.
+ *   router already resolved and bound its route. Free, and the only lookup that
+ *   works for a non-GET route.
  * - {@see forUrl()} — the URL came from somewhere else (a `Referer` header, a
  *   page URL reported by the browser error snippet), so it describes a request
  *   that is not the current one and has no bound route. It must be matched
  *   against the route table separately.
+ * - {@see resolver()} — free-form data (breadcrumbs, log context, event
+ *   properties) holds many URLs, each describing a different request. That is
+ *   the callable the shared scrubber's `$sensitiveValues` seam takes.
  *
- * Feed either result to {@see SecretScrubber::scrubUrlPath()} /
- * {@see SecretScrubber::scrubPathSegments()}.
+ * Feed any of them to `Ranetrace\Php\Support\SecretScrubber`.
  */
 final class RouteSecretResolver
 {
@@ -46,10 +53,47 @@ final class RouteSecretResolver
             return [];
         }
 
-        return SecretScrubber::sensitiveRouteParameterValues(
+        return Core::scrubber()->sensitiveRouteParameterValues(
             $route->originalParameters(),
             $route->bindingFields()
         );
+    }
+
+    /**
+     * The per-URL lookup as the shared scrubber's `$sensitiveValues` callable.
+     *
+     * `scrubDeep()` walks free-form data holding URLs from many requests: a
+     * navigation breadcrumb recorded on the previous page, a fetch breadcrumb
+     * naming a different endpoint. One shared list would redact the wrong URL's
+     * secret, so each is looked up on its own.
+     *
+     * $alwaysSensitive is unioned into every answer. Callers pass the current
+     * request's own values there, because {@see forUrl()} can only match GET
+     * routes and the request being handled may well be a POST to
+     * `invitations/{token}/accept`. A redactor's answers compose: a segment
+     * either lookup calls secret is redacted, so the union can only redact
+     * more, never less.
+     *
+     * The candidate routes are resolved once per resolver and on first use, so
+     * a payload with dozens of URL-shaped values walks the route table once and
+     * a payload with none never walks it at all.
+     *
+     * @param  array<int, string>  $alwaysSensitive
+     * @return Closure(string): array<int, string>
+     */
+    public static function resolver(array $alwaysSensitive = []): Closure
+    {
+        $candidates = null;
+        $alwaysSensitive = array_values(array_unique($alwaysSensitive));
+
+        return static function (string $url) use (&$candidates, $alwaysSensitive): array {
+            $candidates ??= self::sensitiveParameterRoutes();
+
+            return array_values(array_unique([
+                ...$alwaysSensitive,
+                ...self::forUrl($url, $candidates),
+            ]));
+        };
     }
 
     /**
@@ -101,7 +145,7 @@ final class RouteSecretResolver
 
                 $bound = (clone $route)->bind($request);
 
-                $values = SecretScrubber::sensitiveRouteParameterValues(
+                $values = Core::scrubber()->sensitiveRouteParameterValues(
                     $bound->originalParameters(),
                     $bound->bindingFields()
                 );
@@ -123,11 +167,11 @@ final class RouteSecretResolver
     /**
      * The candidate routes {@see forUrl()} would otherwise resolve per call.
      *
-     * {@see SecretScrubber::scrubDeep()} resolves these once and threads them
-     * through its recursion, so a payload with dozens of URL-shaped breadcrumb
-     * values walks the route table once rather than once per value. An empty
-     * result also means path resolution can be skipped outright: an application
-     * with no secret-bearing route has nothing for it to find.
+     * {@see resolver()} resolves these once and reuses them for every URL it is
+     * asked about, so a payload with dozens of URL-shaped breadcrumb values
+     * walks the route table once rather than once per value. An empty result
+     * also means path resolution can be skipped outright: an application with
+     * no secret-bearing route has nothing for it to find.
      *
      * @return array<int, Route>
      */
@@ -152,6 +196,7 @@ final class RouteSecretResolver
     private static function routesWithSensitiveParameters(): array
     {
         $candidates = [];
+        $scrubber = Core::scrubber();
 
         foreach (app(Router::class)->getRoutes()->get('GET') as $route) {
             $bindingFields = $route->bindingFields();
@@ -159,7 +204,7 @@ final class RouteSecretResolver
             foreach ($route->parameterNames() as $name) {
                 $bindingField = $bindingFields[$name] ?? null;
 
-                if (SecretScrubber::isSensitiveRouteParameter($name, is_string($bindingField) ? $bindingField : null)) {
+                if ($scrubber->isSensitiveRouteParameter($name, is_string($bindingField) ? $bindingField : null)) {
                     $candidates[] = $route;
 
                     break;

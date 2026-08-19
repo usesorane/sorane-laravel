@@ -7,9 +7,10 @@ namespace Ranetrace\Laravel\Logging;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\LogRecord;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
-use Ranetrace\Laravel\Utilities\CoreScrubber;
+use Ranetrace\Laravel\Utilities\RouteSecretResolver;
 use Ranetrace\Php\Logging\LogItemBuilder;
 use Throwable;
 
@@ -49,13 +50,17 @@ class RanetraceLogHandler extends AbstractProcessingHandler
                 return;
             }
 
-            $logData = (new LogItemBuilder(CoreConfig::make(), new CoreScrubber))->build(
+            $logData = (new LogItemBuilder(CoreConfig::make(), Core::scrubber()))->build(
                 $record->level->name,
                 $record->message,
                 $record->context,
                 $record->channel,
                 $record->datetime->format('c'), // ISO 8601
                 $record->extra,
+                // A log record's context is free-form and routinely carries a
+                // URL from some request other than the one being handled, so
+                // each is matched against the route table on its own.
+                RouteSecretResolver::resolver(),
             );
 
             if (config('ranetrace.logging.queue', true)) {

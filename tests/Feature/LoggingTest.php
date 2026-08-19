@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Monolog\LogRecord;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
 
@@ -153,6 +154,28 @@ test('it scrubs secrets inside URL values in context', function (): void {
         $context = $job->getLogData()['context'];
 
         return $context['endpoint'] === 'https://api.test/hook?api_key=[REDACTED]&page=2';
+    });
+});
+
+test('it scrubs a sensitive path segment inside a URL value in context', function (): void {
+    // A path segment carries no marker saying it holds a token: only the route
+    // that named it `{token}` knows. Log context is free-form and holds URLs
+    // from requests other than the one being handled, so each is matched
+    // against the route table on its own. This is the per-URL resolver the
+    // handler hands the shared builder, and the reason the shared scrubber
+    // grew a callable seam rather than taking one pre-resolved list.
+    Route::get('/reset-password/{token}', fn (): string => 'reset');
+
+    Log::channel('ranetrace')->error('Reset mail sent', [
+        'link' => 'http://localhost/reset-password/live-token-abc',
+        'other' => 'http://localhost/articles/hello',
+    ]);
+
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
+        $context = $job->getLogData()['context'];
+
+        return $context['link'] === 'http://localhost/reset-password/[REDACTED]'
+            && $context['other'] === 'http://localhost/articles/hello';
     });
 });
 

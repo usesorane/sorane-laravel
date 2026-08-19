@@ -8,12 +8,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
-use Ranetrace\Laravel\Analytics\FingerprintGenerator;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
-use Ranetrace\Laravel\Utilities\CoreScrubber;
 use Ranetrace\Laravel\Utilities\RouteSecretResolver;
+use Ranetrace\Php\Config;
 use Ranetrace\Php\JavaScript\ErrorItemBuilder;
 use Throwable;
 
@@ -32,28 +32,17 @@ class JavaScriptErrorController extends Controller
     /**
      * Default ignored-error message patterns. Used as the in-code fallback so a
      * published config that removed the `ignored_errors` key restores these
-     * defaults rather than silently un-filtering noise. Mirrors
-     * config/ranetrace.php → javascript_errors.ignored_errors.
+     * defaults rather than silently un-filtering noise.
+     *
+     * The list itself lives in `ranetrace/ranetrace-php`, where the bundled
+     * capture script also reads it: the browser filters on it before posting
+     * and this endpoint filters on it again, so the two must be the same list
+     * rather than two copies that drift. `config/ranetrace.php` publishes the
+     * same values for a host that wants to edit them.
      *
      * @var array<int, string>
      */
-    public const array DEFAULT_IGNORED_ERRORS = [
-        'ResizeObserver loop limit exceeded',
-        'ResizeObserver loop completed with undelivered notifications',
-        'Script error.',
-        'Script error',
-        'Failed to fetch',
-        'NetworkError when attempting to fetch resource',
-        'Network request failed',
-        'Load failed',
-        'Loading chunk',
-        'ChunkLoadError',
-        'cancelled',
-        'canceled',
-        'The operation was aborted',
-        'AbortError',
-        'Illegal invocation',
-    ];
+    public const array DEFAULT_IGNORED_ERRORS = Config::DEFAULT_IGNORED_JAVASCRIPT_ERRORS;
 
     public function store(Request $request): JsonResponse
     {
@@ -156,17 +145,18 @@ class JavaScriptErrorController extends Controller
         // likes. Only a scalar identifier is shippable as `user_id`.
         $userId = $request->user()?->getAuthIdentifier();
 
-        $errorData = (new ErrorItemBuilder(CoreConfig::make(), new CoreScrubber))->build(
+        $errorData = (new ErrorItemBuilder(CoreConfig::make(), Core::scrubber()))->build(
             payload: $request->all(),
             userAgent: $request->userAgent(),
             userId: is_int($userId) || is_string($userId) ? $userId : null,
             // Hashed (not raw) so a leaked payload can't be used to hijack the
             // session, while still grouping errors within the same session.
-            sessionId: FingerprintGenerator::hash(session()->getId()),
+            sessionId: Core::fingerprints()->hash(session()->getId()),
             // The reported URL is the page the error happened on, NOT this POST
-            // endpoint, so the current route says nothing about it — it gets its
-            // own route lookup to redact `{token}`-style path segments.
-            sensitivePathValues: RouteSecretResolver::forUrl($reportedUrl),
+            // endpoint, so the current route says nothing about it. Neither do
+            // the breadcrumb URLs, which were recorded across a whole browsing
+            // session: every one of them gets its own route lookup.
+            sensitivePathValues: RouteSecretResolver::resolver(),
             // Carbon rather than the builder's own clock, so a host (or a test)
             // that freezes time sees the frozen value.
             timestampFallback: now()->format('c'),

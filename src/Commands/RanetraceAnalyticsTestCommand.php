@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
-use Ranetrace\Laravel\Analytics\FingerprintGenerator;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
+use Ranetrace\Laravel\Support\Core;
 
 class RanetraceAnalyticsTestCommand extends Command
 {
@@ -74,8 +74,8 @@ class RanetraceAnalyticsTestCommand extends Command
             'utm_campaign' => null,
             'utm_content' => null,
             'utm_term' => null,
-            'session_id_hash' => FingerprintGenerator::hash('ranetrace:test-analytics'),
-            'user_agent_hash' => FingerprintGenerator::hash('Ranetrace-CLI/Test'),
+            'session_id_hash' => Core::fingerprints()->hash('ranetrace:test-analytics'),
+            'user_agent_hash' => Core::fingerprints()->hash('Ranetrace-CLI/Test'),
             'human_probability_score' => 100,
             'human_probability_reasons' => ['cli-test'],
         ]);

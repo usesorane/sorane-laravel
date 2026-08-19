@@ -16,6 +16,14 @@
             <directory>tests/Feature</directory>
         </testsuite>
         <!--
+            Conformance checks against the wire-contract fixtures shipped by
+            ranetrace/ranetrace-php, which this SDK, the PHP SDK and the backend
+            all read, so the wire is described once instead of three times.
+        -->
+        <testsuite name="Contract">
+            <directory>tests/Contract</directory>
+        </testsuite>
+        <!--
             Browser tests drive a real Chromium via Playwright and need
             `npm install && npx playwright install chromium` first, so they are
             excluded from the default run (see the `test` composer script) and

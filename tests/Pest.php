@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Ranetrace\Laravel\Tests\TestCase;
 
-uses(TestCase::class)->in('Browser', 'Feature', 'Unit');
+uses(TestCase::class)->in('Browser', 'Contract', 'Feature', 'Unit');
 
 /**
  * The client's answer when a token-bound MCP method is called without a

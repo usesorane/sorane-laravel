@@ -30,6 +30,23 @@ test('the uniqueness lock spans the full retry envelope', function (): void {
     expect($job->uniqueFor)->toBeGreaterThanOrEqual(1260);
 });
 
+/**
+ * Where a batch goes is the shared endpoint table's answer, so a type nothing
+ * knows how to address is refused there rather than posted to a guess. It is a
+ * programming error rather than a capture failure, so it throws and the job's
+ * failed() hook takes the feature down for the contracted pause.
+ */
+test('a batch of an unknown type is refused by the endpoint table', function (): void {
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItem('page_views', ['anything' => true]);
+
+    expect(fn () => (new SendBatchToRanetraceJob('page_views', 10))->handle(
+        app(RanetraceApiClient::class),
+        $buffer,
+        app(RanetracePauseManager::class),
+    ))->toThrow(InvalidArgumentException::class, 'Unknown batch type: page_views');
+});
+
 test('the pre-flight size guard trims an over-budget batch and returns the overflow', function (): void {
     $job = new SendBatchToRanetraceJob('errors');
 

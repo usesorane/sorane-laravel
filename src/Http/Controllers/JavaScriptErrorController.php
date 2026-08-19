@@ -10,13 +10,23 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
 use Ranetrace\Laravel\Analytics\FingerprintGenerator;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
-use Ranetrace\Laravel\Utilities\DataSanitizer;
-use Ranetrace\Laravel\Utilities\PayloadSizer;
+use Ranetrace\Laravel\Utilities\CoreScrubber;
 use Ranetrace\Laravel\Utilities\RouteSecretResolver;
-use Ranetrace\Laravel\Utilities\SecretScrubber;
+use Ranetrace\Php\JavaScript\ErrorItemBuilder;
 use Throwable;
 
+/**
+ * The endpoint the browser capture script posts to.
+ *
+ * The fifteen-key item, its caps and its breadcrumb rules live in
+ * `Ranetrace\Php\JavaScript\ErrorItemBuilder`, shared with
+ * `ranetrace/ranetrace-php`. What stays here is the Laravel half: the config
+ * gates, the validator, the ignore and sample filters, and the four fields a
+ * browser must never be trusted to state, which this application observes for
+ * itself.
+ */
 class JavaScriptErrorController extends Controller
 {
     /**
@@ -45,17 +55,6 @@ class JavaScriptErrorController extends Controller
         'Illegal invocation',
     ];
 
-    /**
-     * Maximum serialized context size (JSON-encoded bytes). Oversize context is
-     * replaced with a truncation marker rather than truncated mid-structure.
-     */
-    private const int MAX_CONTEXT_BYTES = 51_200; // 50 KB
-
-    /**
-     * Maximum serialized data size per breadcrumb (JSON-encoded bytes).
-     */
-    private const int MAX_BREADCRUMB_DATA_BYTES = 5_120; // 5 KB
-
     public function store(Request $request): JsonResponse
     {
         // The JS error endpoint is part of the capture path and must never
@@ -73,38 +72,6 @@ class JavaScriptErrorController extends Controller
                 'message' => 'Failed to process error',
             ], 500);
         }
-    }
-
-    /**
-     * Cap breadcrumb count and per-breadcrumb data size.
-     *
-     * Required breadcrumb fields (timestamp/category/message) are guaranteed
-     * present by the validator; no fallback defaults are applied here.
-     *
-     * @param  array<int, array<string, mixed>>  $breadcrumbs
-     * @return array<int, array<string, mixed>>
-     */
-    protected function sanitizeBreadcrumbs(array $breadcrumbs): array
-    {
-        $maxBreadcrumbs = config('ranetrace.javascript_errors.max_breadcrumbs', 20);
-
-        // Keep the most recent N breadcrumbs (oldest dropped)
-        $breadcrumbs = array_slice($breadcrumbs, -$maxBreadcrumbs);
-
-        return array_map(function (array $breadcrumb): array {
-            $data = PayloadSizer::capBytes(
-                SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? [])),
-                self::MAX_BREADCRUMB_DATA_BYTES,
-                'Breadcrumb data exceeded 5KB limit and was removed'
-            );
-
-            return [
-                'timestamp' => $breadcrumb['timestamp'],
-                'category' => $breadcrumb['category'],
-                'message' => $breadcrumb['message'],
-                'data' => $data,
-            ];
-        }, $breadcrumbs);
     }
 
     private function process(Request $request): JsonResponse
@@ -182,55 +149,28 @@ class JavaScriptErrorController extends Controller
             ], 200);
         }
 
-        // Sanitize, redact secret-keyed values, then cap size (oversize objects
-        // are replaced with a marker — truncating mid-structure yields invalid JSON).
-        $context = PayloadSizer::capBytes(
-            SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($request->input('context', []))),
-            self::MAX_CONTEXT_BYTES,
-            'Context exceeded 50KB limit and was removed'
-        );
-
         $reportedUrl = (string) $request->input('url');
 
-        $errorData = [
-            'message' => SecretScrubber::scrubString((string) $errorMessage),
-            'stack' => $request->input('stack') !== null
-                ? SecretScrubber::scrubString((string) $request->input('stack'))
-                : null,
-            'type' => $request->input('type', 'Error'),
-            'filename' => $request->input('filename'),
-            'line' => $request->input('line'),
-            'column' => $request->input('column'),
-            'user_agent' => $request->userAgent(),
+        // Contract method on Authenticatable — safe for non-Eloquent user
+        // models, and typed `mixed` because a host may key users any way it
+        // likes. Only a scalar identifier is shippable as `user_id`.
+        $userId = $request->user()?->getAuthIdentifier();
+
+        $errorData = (new ErrorItemBuilder(CoreConfig::make(), new CoreScrubber))->build(
+            payload: $request->all(),
+            userAgent: $request->userAgent(),
+            userId: is_int($userId) || is_string($userId) ? $userId : null,
+            // Hashed (not raw) so a leaked payload can't be used to hijack the
+            // session, while still grouping errors within the same session.
+            sessionId: FingerprintGenerator::hash(session()->getId()),
             // The reported URL is the page the error happened on, NOT this POST
             // endpoint, so the current route says nothing about it — it gets its
             // own route lookup to redact `{token}`-style path segments.
-            'url' => SecretScrubber::scrubUrlPath(
-                SecretScrubber::scrubUrl($reportedUrl),
-                RouteSecretResolver::forUrl($reportedUrl)
-            ),
-            'timestamp' => $request->input('timestamp', now()->format('c')),
-            'environment' => config('app.env'),
-            // Contract method on Authenticatable — safe for non-Eloquent user models.
-            'user_id' => $request->user()?->getAuthIdentifier(),
-            // Hashed (not raw) so a leaked payload can't be used to hijack the
-            // session, while still grouping errors within the same session.
-            'session_id' => FingerprintGenerator::hash(session()->getId()),
-            // `nullable|array` accepts an explicit null (and Laravel's
-            // ConvertEmptyStringsToNull turns a form-encoded `breadcrumbs=`
-            // into one), which `input()`'s default does NOT replace.
-            'breadcrumbs' => $this->sanitizeBreadcrumbs($request->input('breadcrumbs') ?? []),
-            'context' => $context,
-            'browser_info' => [
-                'screen_width' => $request->input('browser_info.screen_width'),
-                'screen_height' => $request->input('browser_info.screen_height'),
-                'viewport_width' => $request->input('browser_info.viewport_width'),
-                'viewport_height' => $request->input('browser_info.viewport_height'),
-                'device_memory' => $request->input('browser_info.device_memory'),
-                'hardware_concurrency' => $request->input('browser_info.hardware_concurrency'),
-                'connection_type' => $request->input('browser_info.connection_type'),
-            ],
-        ];
+            sensitivePathValues: RouteSecretResolver::forUrl($reportedUrl),
+            // Carbon rather than the builder's own clock, so a host (or a test)
+            // that freezes time sees the frozen value.
+            timestampFallback: now()->format('c'),
+        );
 
         if (config('ranetrace.javascript_errors.queue', true)) {
             HandleJavaScriptErrorJob::dispatch($errorData);

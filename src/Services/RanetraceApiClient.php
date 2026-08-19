@@ -7,6 +7,9 @@ namespace Ranetrace\Laravel\Services;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
+use Ranetrace\Laravel\Support\Endpoints;
+use Ranetrace\Php\Http\Endpoint;
 use RuntimeException;
 use Throwable;
 
@@ -29,6 +32,23 @@ class RanetraceApiClient
     }
 
     /**
+     * Send one batch of captured items of the given type.
+     *
+     * The path, the wrapper key, the User-Agent feature and the timeout config
+     * key all come from the shared endpoint table, so this SDK cannot address an
+     * endpoint differently from `ranetrace/ranetrace-php`.
+     *
+     * @param  array<int, array>  $items
+     * @return array<string, mixed>
+     *
+     * @throws InvalidArgumentException When no endpoint is registered for the type.
+     */
+    public function sendBatchOfType(string $type, array $items): array
+    {
+        return $this->sendBatch(Endpoints::table()->get($type), $items);
+    }
+
+    /**
      * Send a batch of errors to Ranetrace.
      *
      * @param  array<int, array>  $errors
@@ -36,7 +56,7 @@ class RanetraceApiClient
      */
     public function sendErrorBatch(array $errors): array
     {
-        return $this->sendBatch('/errors/store', 'errors', 'Ranetrace-Laravel/Errors/1.0', 'ranetrace.errors.timeout', $errors);
+        return $this->sendBatchOfType('errors', $errors);
     }
 
     /**
@@ -47,7 +67,7 @@ class RanetraceApiClient
      */
     public function sendJavaScriptErrorBatch(array $errors): array
     {
-        return $this->sendBatch('/javascript-errors/store', 'javascript_errors', 'Ranetrace-Laravel/JavaScriptErrors/1.0', 'ranetrace.javascript_errors.timeout', $errors);
+        return $this->sendBatchOfType('javascript_errors', $errors);
     }
 
     /**
@@ -58,7 +78,7 @@ class RanetraceApiClient
      */
     public function sendEventBatch(array $events): array
     {
-        return $this->sendBatch('/events/store', 'events', 'Ranetrace-Laravel/Events/1.0', 'ranetrace.events.timeout', $events);
+        return $this->sendBatchOfType('events', $events);
     }
 
     /**
@@ -69,7 +89,7 @@ class RanetraceApiClient
      */
     public function sendLogBatch(array $logs): array
     {
-        return $this->sendBatch('/logs/store', 'logs', 'Ranetrace-Laravel/Logs/1.0', 'ranetrace.logging.timeout', $logs);
+        return $this->sendBatchOfType('logs', $logs);
     }
 
     /**
@@ -80,7 +100,7 @@ class RanetraceApiClient
      */
     public function sendPageVisitBatch(array $visits): array
     {
-        return $this->sendBatch('/page-visits/store', 'page_visits', 'Ranetrace-Laravel/PageVisits/1.0', 'ranetrace.website_analytics.timeout', $visits);
+        return $this->sendBatchOfType('page_visits', $visits);
     }
 
     /**
@@ -806,12 +826,12 @@ class RanetraceApiClient
 
     /**
      * Send one batch to a feature store endpoint. Shared by all five feature
-     * batch methods — they differ only in path, wrapper key, User-Agent and timeout.
+     * batch methods, which differ only in the endpoint they name.
      *
      * @param  array<int, array>  $items
      * @return array<string, mixed>
      */
-    protected function sendBatch(string $path, string $wrapperKey, string $userAgent, string $timeoutConfigKey, array $items): array
+    protected function sendBatch(Endpoint $endpoint, array $items): array
     {
         if (empty($this->apiKey)) {
             return $this->formatErrorResponse('API key not configured');
@@ -824,14 +844,14 @@ class RanetraceApiClient
         try {
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => $userAgent,
+                    'User-Agent' => $endpoint->userAgent(Endpoints::SDK),
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
                 ->connectTimeout(self::CONNECT_TIMEOUT)
-                ->timeout((int) config($timeoutConfigKey, 10))
-                ->post($this->apiUrl.$path, [$wrapperKey => $items]);
+                ->timeout((int) config(Endpoints::timeoutKey($endpoint), 10))
+                ->post($this->apiUrl.$endpoint->path, [$endpoint->wrapper => $items]);
 
             return $this->formatResponse($response);
         } catch (Throwable $e) {

@@ -174,57 +174,28 @@ test('trackEvent does not throw on an invalid event name when validation is disa
 });
 
 // --- header allowlist + bounded shape ---
+//
+// The allowlist itself, the per-value truncation and the fifty-header cap are
+// the shared builder's, and ranetrace/ranetrace-php asserts them against the
+// contract. What is Laravel's own, and so tested here, is that the request's
+// HEADER BAG is the thing handed to that rule.
 
-test('maskAndBoundHeaders masks every header not on the allowlist and preserves nested array shape', function (): void {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
-
-    $masked = $method->invoke($ranetrace, [
-        'user-agent' => ['Mozilla/5.0'],
-        'accept' => ['text/html'],
-        'authorization' => ['Bearer secret-token'],
-        'cookie' => ['session=abc123'],
-        'x-api-key' => ['super-secret-key'],
-        'proxy-authorization' => ['Basic xyz'],
-        'php-auth-pw' => ['hunter2'],
+test('the request header bag is what reaches the masking rule', function (): void {
+    $request = Request::create('http://localhost/orders', 'GET', server: [
+        'HTTP_USER_AGENT' => 'Mozilla/5.0',
+        'HTTP_AUTHORIZATION' => 'Bearer secret-token',
+        'HTTP_X_FORWARDED_FOR' => '203.0.113.7, 198.51.100.2',
+        'HTTP_X_FORWARDED_PROTO' => 'https',
     ]);
 
-    // Allowlisted headers are preserved as nested arrays
-    expect($masked['user-agent'])->toBe(['Mozilla/5.0']);
-    expect($masked['accept'])->toBe(['text/html']);
+    $headers = laravelErrorPayload(new RuntimeException('boom'), $request)['headers'];
 
-    // Non-allowlisted header values are masked; structure stays nested arrays
-    expect($masked['authorization'])->toBe(['***']);
-    expect($masked['cookie'])->toBe(['***']);
-    expect($masked['x-api-key'])->toBe(['***']);
-    expect($masked['proxy-authorization'])->toBe(['***']);
-    expect($masked['php-auth-pw'])->toBe(['***']);
-});
-
-test('maskAndBoundHeaders truncates header values that exceed MAX_HEADER_VALUE_LENGTH', function (): void {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
-
-    $huge = str_repeat('a', 1000);
-    $masked = $method->invoke($ranetrace, ['user-agent' => [$huge]]);
-
-    // The value is truncated to <= 500 chars (MAX_HEADER_VALUE_LENGTH)
-    expect(mb_strlen($masked['user-agent'][0]))->toBeLessThanOrEqual(500);
-    expect($masked['user-agent'][0])->toEndWith('... (truncated)');
-});
-
-test('maskAndBoundHeaders caps header count at MAX_HEADER_COUNT', function (): void {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
-
-    $headers = [];
-    for ($i = 0; $i < 80; $i++) {
-        $headers["x-custom-{$i}"] = ['value'];
-    }
-
-    $masked = $method->invoke($ranetrace, $headers);
-
-    expect(count($masked))->toBe(50);
+    expect($headers['user-agent'])->toBe(['Mozilla/5.0'])
+        ->and($headers['authorization'])->toBe(['***'])
+        // The client IP chain is PII and is masked; the (non-PII) proto header
+        // beside it stays plaintext.
+        ->and($headers['x-forwarded-for'])->toBe(['***'])
+        ->and($headers['x-forwarded-proto'])->toBe(['https']);
 });
 
 // --- error payload shape ---
@@ -338,93 +309,48 @@ test('user payload uses getAuthIdentifier() and is null-safe for missing email',
 });
 
 // --- file-path relativization (R4-2) ---
+//
+// Relativizing (and left-truncating) a path is the shared builder's rule. What
+// Laravel supplies is the root to relativize AGAINST, which is base_path().
 
-test('relativizePath strips the application base path', function (): void {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'relativizePath');
+test('the reported file path is relative to base_path, not the server layout', function (): void {
+    $payload = invokeBuildErrorPayload(exceptionThrownAt(base_path('app/Http/Controllers/UserController.php')));
 
-    expect($method->invoke($ranetrace, base_path('app/Http/Controllers/UserController.php')))
-        ->toBe('app/Http/Controllers/UserController.php');
+    expect($payload['file'])->toBe('app/Http/Controllers/UserController.php');
 });
 
-test('relativizePath leaves paths outside base_path unchanged', function (): void {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'relativizePath');
+test('a file outside base_path keeps its absolute path', function (): void {
+    $payload = invokeBuildErrorPayload(exceptionThrownAt('/usr/local/share/elsewhere/File.php'));
 
-    expect($method->invoke($ranetrace, '/usr/local/share/elsewhere/File.php'))
-        ->toBe('/usr/local/share/elsewhere/File.php');
+    expect($payload['file'])->toBe('/usr/local/share/elsewhere/File.php');
 });
 
-// --- per-line context cap (R6-2) ---
+// --- path secrets resolved from the ROUTER (R4-4) ---
+//
+// Redacting a path segment is the shared builder's rule; knowing WHICH segment
+// holds a secret is not something a path can be asked, so this is the half only
+// Laravel can answer and the only half worth testing here.
 
-test('capContextLine truncates an over-long source line and preserves the newline', function (): void {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'capContextLine');
-
-    $capped = $method->invoke($ranetrace, str_repeat('x', 5000)."\n");
-
-    expect(mb_strlen($capped))->toBeLessThan(5000)
-        ->and($capped)->toEndWith("... (truncated)\n");
-
-    // A short line passes through unchanged.
-    expect($method->invoke($ranetrace, "short line\n"))->toBe("short line\n");
-});
-
-// --- referer scrubbing in headers (R4-4) ---
-
-test('maskAndBoundHeaders scrubs secrets from the referer query string', function (): void {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
-
-    $masked = $method->invoke($ranetrace, [
-        'referer' => ['https://example.com/reset?token=abc123&page=2'],
-    ]);
-
-    expect($masked['referer'][0])->toBe('https://example.com/reset?token=[REDACTED]&page=2');
-});
-
-test('maskAndBoundHeaders scrubs a sensitive segment from the referer PATH', function (): void {
-    Illuminate\Support\Facades\Route::get('/reset-password/{token}', fn (): string => 'reset');
-
-    // The Referer describes a page the visitor was on before the error, so it
-    // is matched against the application's routes rather than the current one.
-
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
-
-    $masked = $method->invoke($ranetrace, [
-        'referer' => ['http://localhost/reset-password/live-reset-token-xyz789'],
-    ]);
-
-    expect($masked['referer'][0])->toBe('http://localhost/reset-password/[REDACTED]');
-});
-
-test('the error payload url has its sensitive path segment redacted', function (): void {
+test('the reported url redacts the segment the matched route names a token', function (): void {
     $request = Request::create('http://localhost/reset-password/live-reset-token-xyz789?page=2', 'GET');
     $route = (new Route(['GET'], 'reset-password/{token}', fn (): string => 'reset'))->bind($request);
     $request->setRouteResolver(fn (): Route => $route);
 
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'scrubRequestUrl');
-
-    expect($method->invoke($ranetrace, $request))
+    expect(laravelErrorPayload(new RuntimeException('boom'), $request)['url'])
         ->toBe('http://localhost/reset-password/[REDACTED]?page=2');
 });
 
-// --- client IP is not captured (R2-2) ---
+test('a referer is matched against the route table on its own, not the current route', function (): void {
+    Illuminate\Support\Facades\Route::get('/reset-password/{token}', fn (): string => 'reset');
 
-test('maskAndBoundHeaders masks the client IP x-forwarded-for header', function (): void {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
-
-    $masked = $method->invoke($ranetrace, [
-        'x-forwarded-for' => ['203.0.113.7, 198.51.100.2'],
-        'x-forwarded-proto' => ['https'],
+    // The Referer describes a page the visitor was on BEFORE the error, so the
+    // route bound to the current request says nothing about it.
+    $request = Request::create('http://localhost/dashboard', 'GET', server: [
+        'HTTP_REFERER' => 'http://localhost/reset-password/live-reset-token-xyz789?token=abc123&page=2',
     ]);
 
-    // The client IP chain is masked; the (non-PII) proto header stays plaintext.
-    expect($masked['x-forwarded-for'])->toBe(['***'])
-        ->and($masked['x-forwarded-proto'])->toBe(['https']);
+    expect(laravelErrorPayload(new RuntimeException('boom'), $request)['headers']['referer'])
+        ->toBe(['http://localhost/reset-password/[REDACTED]?token=[REDACTED]&page=2']);
 });
 
 // --- user email is gated (R4-6) ---
@@ -505,4 +431,37 @@ function invokeBuildErrorPayload(Throwable $exception): array
     $method = new ReflectionMethod($ranetrace, 'buildErrorPayload');
 
     return $method->invoke($ranetrace, $exception);
+}
+
+/**
+ * The payload a given HTTP request would produce.
+ *
+ * The suite runs under the CLI SAPI, so `runningInConsole()` is true and the
+ * ordinary path nulls every request field. The console flag is therefore stated
+ * rather than detected, which is the only way to reach the request branch at
+ * all; everything else is the real capture path, context gathering included.
+ *
+ * @return array<string, mixed>
+ */
+function laravelErrorPayload(Throwable $exception, Request $request): array
+{
+    $ranetrace = new Ranetrace;
+
+    $context = new ReflectionMethod($ranetrace, 'errorContext')->invoke($ranetrace, $request, false);
+    $builder = new ReflectionMethod($ranetrace, 'payloadBuilder')->invoke($ranetrace);
+
+    return $builder->build($exception, $context);
+}
+
+/**
+ * An exception reporting a file of our choosing, so the path handling can be
+ * exercised without arranging a throw from that exact location.
+ */
+function exceptionThrownAt(string $file): Exception
+{
+    $exception = new Exception('boom');
+
+    new ReflectionProperty(Exception::class, 'file')->setValue($exception, $file);
+
+    return $exception;
 }

@@ -46,6 +46,16 @@ class InternalLogger
     }
 
     /**
+     * Log a notice message.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public static function notice(string $message, array $context = []): void
+    {
+        self::log('notice', $message, $context);
+    }
+
+    /**
      * Log a critical message.
      *
      * @param  array<string, mixed>  $context

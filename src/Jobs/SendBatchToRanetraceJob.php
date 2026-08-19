@@ -11,11 +11,13 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
-use InvalidArgumentException;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\InternalLogger;
+use Ranetrace\Php\Http\BatchOutcome;
+use Ranetrace\Php\Http\PauseScope;
+use Ranetrace\Php\Http\ResponsePolicy;
 use Throwable;
 
 class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
@@ -94,20 +96,15 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             ]);
         }
 
-        // Extract just the data payloads for the API
-        $payloads = array_map(fn ($item) => $item['data'], $this->items);
+        // Extract just the data payloads for the API. Where the batch goes is
+        // the shared endpoint table's answer, so an unknown type throws there
+        // rather than being addressed to a guess.
+        $result = $client->sendBatchOfType(
+            $this->type,
+            array_map(fn ($item) => $item['data'], $this->items),
+        );
 
-        // Send batch to Ranetrace API
-        $result = match ($this->type) {
-            'errors' => $client->sendErrorBatch($payloads),
-            'events' => $client->sendEventBatch($payloads),
-            'logs' => $client->sendLogBatch($payloads),
-            'page_visits' => $client->sendPageVisitBatch($payloads),
-            'javascript_errors' => $client->sendJavaScriptErrorBatch($payloads),
-            default => throw new InvalidArgumentException("Unknown batch type: {$this->type}"),
-        };
-
-        // Handle response based on status code (throws on retryable failures)
+        // Handle response based on status code (releases on retryable failures)
         $this->handleResponse($result, $buffer, $pauseManager);
     }
 
@@ -127,7 +124,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
         ]);
 
         $pauseManager = app(RanetracePauseManager::class);
-        $pauseManager->setFeaturePause($this->type, 900, 'exception');
+        $pauseManager->setFeaturePause($this->type, ResponsePolicy::PAUSE_SECONDS, 'exception');
     }
 
     /**
@@ -141,204 +138,139 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Handle API response according to spec.
+     * Act on one API response.
+     *
+     * What each status MEANS is decided by `Ranetrace\Php\Http\ResponsePolicy`,
+     * shared with `ranetrace/ranetrace-php` so the two SDKs cannot drift on the
+     * matrix the server relies on. What stays here is this SDK's own half: the
+     * cache-backed pause store, the diagnostics wording, and the retry envelope.
+     *
+     * The envelope is the one place the two designs part company, and the
+     * outcome names it: a transient failure has somewhere to be released to
+     * here, so the 60/300/900s backoff is spent BEFORE the contracted pause is
+     * taken. The file-based worker has no queue and pauses on the spot. Both
+     * land on the same pause, which is the part the contract fixes.
      */
     protected function handleResponse(array $result, RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
     {
-        $status = $result['status'] ?? 0;
-        $data = $result['data'] ?? [];
+        $outcome = (new ResponsePolicy)->decide($result);
 
-        // Network-level errors (status 0). The transport failure (e.g. a cURL
-        // timeout) was already caught inside the API client; retry it WITHOUT
-        // throwing so the raw cURL message never escapes into the host
-        // application (see retryWithBackoffOrPause()).
-        if ($status === 0) {
-            $this->logError('Network error during batch send', [
-                'type' => $this->type,
-                'error' => $result['error'] ?? 'Unknown network error',
-                'items_count' => count($this->items),
-            ]);
+        $this->logOutcome($result, $outcome);
 
-            $this->retryWithBackoffOrPause($buffer, $pauseManager, 'network');
+        if ($outcome->stampLastBatch) {
+            // Record a successful drain so ranetrace:status can detect a
+            // stalled worker.
+            $this->recordLastBatch();
+        }
+
+        // Retries are driven by release(), never by throwing, so the transport
+        // failure the API client already caught (e.g. a cURL timeout) does not
+        // escape into the host application. See retryWithBackoffOrPause().
+        if ($outcome->transient) {
+            $this->retryWithBackoffOrPause($buffer, $pauseManager, $outcome->reason);
 
             return;
         }
 
-        // Handle based on HTTP status code
-        match ($status) {
-            200 => $this->handle200Response($data, $buffer),
-            401 => $this->handle401Response($buffer, $pauseManager, $data),
-            403 => $this->handle403Response($buffer, $pauseManager, $data),
-            413 => $this->handle413Response($pauseManager, $data),
-            422 => $this->handle422Response($pauseManager, $data),
-            429 => $this->handle429Response($buffer, $pauseManager, $result['headers'] ?? []),
-            500 => $this->handle500Response($buffer, $pauseManager),
-            default => $this->handleUnknownResponse($status, $buffer, $pauseManager),
+        if ($outcome->rebuffer) {
+            $this->reAddAllItemsToBuffer($buffer);
+        }
+
+        if ($outcome->counters?->hasUnprocessed() === true) {
+            $buffer->addItems($this->type, $outcome->unprocessedPayloads($this->items));
+        }
+
+        $seconds = $outcome->pauseSeconds ?? ResponsePolicy::PAUSE_SECONDS;
+
+        match ($outcome->pauseScope) {
+            // Global, not per feature: a rejected key is not a problem with this
+            // endpoint.
+            PauseScope::Everything => $pauseManager->setGlobalPause($seconds, $outcome->reason),
+            PauseScope::Feature => $pauseManager->setFeaturePause($this->type, $seconds, $outcome->reason),
+            PauseScope::None => null,
         };
     }
 
     /**
-     * Handle 200 OK response.
+     * @param  array<string, mixed>  $result
      */
-    protected function handle200Response(array $data, RanetraceBatchBuffer $buffer): void
+    protected function logOutcome(array $result, BatchOutcome $outcome): void
     {
-        // Record a successful drain so ranetrace:status can detect a stalled worker.
-        $this->recordLastBatch();
+        $data = is_array($result['data'] ?? null) ? $result['data'] : [];
 
-        $items = $data['items'] ?? [];
-        $received = $items['received'] ?? 0;
-        $processed = $items['processed'] ?? 0;
-        $ignored = $items['ignored'] ?? 0;
-        $failed = $items['failed'] ?? 0;
-        $unprocessed = $items['unprocessed'] ?? 0;
-        $unprocessedIndexes = $data['unprocessed_indexes'] ?? [];
+        match ($outcome->status) {
+            0 => $this->logError('Network error during batch send', [
+                'type' => $this->type,
+                'error' => $result['error'] ?? 'Unknown network error',
+                'items_count' => count($this->items),
+            ]),
+            200 => $this->logSuccess($outcome),
+            401 => $this->logError('API authentication failed - invalid or revoked API key', [
+                'type' => $this->type,
+                'message' => ResponsePolicy::errorMessage($data, 'Unauthorized'),
+            ]),
+            403 => $this->logError('API request forbidden', [
+                'type' => $this->type,
+                'message' => ResponsePolicy::errorMessage($data, 'Forbidden'),
+            ]),
+            413 => $this->logCritical('Payload too large - indicates client bug', [
+                'type' => $this->type,
+                'items_count' => count($this->items),
+                'message' => ResponsePolicy::errorMessage($data, 'Payload Too Large'),
+            ]),
+            422 => $this->logError('Validation failed - indicates schema drift or malformed items', [
+                'type' => $this->type,
+                'items_count' => count($this->items),
+                'message' => ResponsePolicy::errorMessage($data, 'Unprocessable Entity'),
+            ]),
+            429 => $this->logWarning('Rate limit exceeded', [
+                'type' => $this->type,
+                'retry_after' => $outcome->pauseSeconds,
+            ]),
+            500 => $this->logError('Server error during batch processing', [
+                'type' => $this->type,
+                'items_count' => count($this->items),
+                'attempt' => $this->attempts(),
+            ]),
+            default => $this->logError('Unexpected API response status', [
+                'type' => $this->type,
+                'status' => $outcome->status,
+                'items_count' => count($this->items),
+            ]),
+        };
+    }
 
-        // Log non-zero failed counts
-        if ($failed > 0) {
+    /**
+     * The per-item tallies a 200 carries back. Failed items are terminal by
+     * design: the server rejected them individually and would reject them
+     * again, so re-sending would loop forever.
+     */
+    protected function logSuccess(BatchOutcome $outcome): void
+    {
+        $counters = $outcome->counters;
+
+        if ($counters === null) {
+            return;
+        }
+
+        if ($counters->hasFailures()) {
             $this->logWarning('Some items failed during processing', [
                 'type' => $this->type,
-                'received' => $received,
-                'processed' => $processed,
-                'ignored' => $ignored,
-                'failed' => $failed,
+                'received' => $counters->received,
+                'processed' => $counters->processed,
+                'ignored' => $counters->ignored,
+                'failed' => $counters->failed,
             ]);
         }
 
-        // Log unprocessed items (timeout scenario)
-        if ($unprocessed > 0) {
+        if ($counters->hasUnprocessed()) {
             $this->logInfo('Some items were not processed due to timeout', [
                 'type' => $this->type,
-                'received' => $received,
-                'processed' => $processed,
-                'unprocessed' => $unprocessed,
+                'received' => $counters->received,
+                'processed' => $counters->processed,
+                'unprocessed' => $counters->unprocessed,
             ]);
-
-            // Re-add only unprocessed items to buffer
-            $this->reAddUnprocessedItemsToBuffer($buffer, $unprocessedIndexes);
         }
-    }
-
-    /**
-     * Handle 401 Unauthorized response.
-     */
-    protected function handle401Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, array $data): void
-    {
-        $this->logError('API authentication failed - invalid or revoked API key', [
-            'type' => $this->type,
-            'message' => ($data['error'] ?? [])['message'] ?? 'Unauthorized',
-        ]);
-
-        // Set global pause for 15 minutes
-        $pauseManager->setGlobalPause(900, '401');
-
-        // Re-add all items to buffer
-        $this->reAddAllItemsToBuffer($buffer);
-    }
-
-    /**
-     * Handle 403 Forbidden response.
-     */
-    protected function handle403Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, array $data): void
-    {
-        $this->logError('API request forbidden', [
-            'type' => $this->type,
-            'message' => ($data['error'] ?? [])['message'] ?? 'Forbidden',
-        ]);
-
-        // Set feature pause for 15 minutes
-        $pauseManager->setFeaturePause($this->type, 900, '403');
-
-        // Re-add all items to buffer
-        $this->reAddAllItemsToBuffer($buffer);
-    }
-
-    /**
-     * Handle 413 Payload Too Large response.
-     */
-    protected function handle413Response(RanetracePauseManager $pauseManager, array $data): void
-    {
-        $this->logCritical('Payload too large - indicates client bug', [
-            'type' => $this->type,
-            'items_count' => count($this->items),
-            'message' => ($data['error'] ?? [])['message'] ?? 'Payload Too Large',
-        ]);
-
-        // Set feature pause for 15 minutes
-        $pauseManager->setFeaturePause($this->type, 900, '413');
-
-        // Do NOT re-add items (they're too large)
-    }
-
-    /**
-     * Handle 422 Unprocessable Entity response.
-     */
-    protected function handle422Response(RanetracePauseManager $pauseManager, array $data): void
-    {
-        $this->logError('Validation failed - indicates schema drift or malformed items', [
-            'type' => $this->type,
-            'items_count' => count($this->items),
-            'message' => ($data['error'] ?? [])['message'] ?? 'Unprocessable Entity',
-        ]);
-
-        // Set feature pause for 15 minutes
-        $pauseManager->setFeaturePause($this->type, 900, '422');
-
-        // Do NOT re-add items (they're invalid)
-    }
-
-    /**
-     * Handle 429 Too Many Requests response.
-     */
-    protected function handle429Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, array $headers): void
-    {
-        // Honor Retry-After when present; fall back to 60s when it is absent,
-        // empty, or non-numeric. formatResponse() stores this key as '' (not
-        // null) when the header is missing, so a bare `?? 60` would evaluate to
-        // (int) '' === 0 — a zero-second pause that defeats the rate-limit
-        // backoff and lets the worker keep hammering the API every run.
-        $retryAfter = (int) ($headers['retry-after'] ?? 0);
-        if ($retryAfter < 1) {
-            $retryAfter = 60;
-        }
-
-        $this->logWarning('Rate limit exceeded', [
-            'type' => $this->type,
-            'retry_after' => $retryAfter,
-        ]);
-
-        // Set feature pause based on Retry-After header
-        $pauseManager->setFeaturePause($this->type, $retryAfter, '429');
-
-        // Re-add all items to buffer
-        $this->reAddAllItemsToBuffer($buffer);
-    }
-
-    /**
-     * Handle 500 Internal Server Error response.
-     */
-    protected function handle500Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
-    {
-        $this->logError('Server error during batch processing', [
-            'type' => $this->type,
-            'items_count' => count($this->items),
-            'attempt' => $this->attempts(),
-        ]);
-
-        $this->retryWithBackoffOrPause($buffer, $pauseManager, '500');
-    }
-
-    /**
-     * Handle unknown status code response.
-     */
-    protected function handleUnknownResponse(int $status, RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
-    {
-        $this->logError('Unexpected API response status', [
-            'type' => $this->type,
-            'status' => $status,
-            'items_count' => count($this->items),
-        ]);
-
-        $this->retryWithBackoffOrPause($buffer, $pauseManager, (string) $status);
     }
 
     /**
@@ -376,7 +308,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             'attempts' => $this->attempts(),
         ]);
 
-        $pauseManager->setFeaturePause($this->type, 900, $reason);
+        $pauseManager->setFeaturePause($this->type, ResponsePolicy::PAUSE_SECONDS, $reason);
     }
 
     /**
@@ -388,24 +320,6 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             $this->type,
             array_map(fn (array $item): array => $item['data'], $this->items)
         );
-    }
-
-    /**
-     * Re-add only unprocessed items to the buffer using their indexes.
-     *
-     * @param  array<int, int>  $indexes
-     */
-    protected function reAddUnprocessedItemsToBuffer(RanetraceBatchBuffer $buffer, array $indexes): void
-    {
-        $dataItems = [];
-
-        foreach ($indexes as $index) {
-            if (isset($this->items[$index])) {
-                $dataItems[] = $this->items[$index]['data'];
-            }
-        }
-
-        $buffer->addItems($this->type, $dataItems);
     }
 
     /**

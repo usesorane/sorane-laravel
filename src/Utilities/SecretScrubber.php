@@ -77,7 +77,7 @@ class SecretScrubber
      * Recursively redact array values whose key matches a sensitive fragment.
      *
      * Non-array input is returned untouched, so this composes directly with the
-     * `mixed` return of {@see DataSanitizer::sanitizeForSerialization()}.
+     * `mixed` return of {@see \Ranetrace\Php\Support\DataSanitizer::sanitizeForSerialization()}.
      */
     public static function scrub(mixed $data): mixed
     {
@@ -96,7 +96,7 @@ class SecretScrubber
      * that key-based scrubbing alone would miss.
      *
      * Intended for free-form, untrusted breadcrumb/context data. Composes with
-     * the `mixed` return of {@see DataSanitizer::sanitizeForSerialization()},
+     * the `mixed` return of {@see \Ranetrace\Php\Support\DataSanitizer::sanitizeForSerialization()},
      * which has already bounded the recursion depth.
      */
     public static function scrubDeep(mixed $data): mixed
@@ -444,7 +444,7 @@ class SecretScrubber
     /**
      * Recursively redact secrets inside every URL-shaped string value, leaving
      * all other values untouched. Operates on the already-depth-bounded output
-     * of {@see DataSanitizer}.
+     * of {@see \Ranetrace\Php\Support\DataSanitizer}.
      *
      * Both halves of a URL can carry a secret, so both are treated: the query
      * via {@see scrubUrl()}, and the path via {@see scrubUrlPath()} — the

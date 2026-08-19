@@ -2,7 +2,36 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Utilities\SecretScrubber;
+
+/**
+ * A value engineered to exhaust PCRE's backtrack limit inside
+ * {@see SecretScrubber::scrubString()}: the sensitive fragment sits at the very
+ * start, so the greedy `[\w.\-]*` prefix has to back off once per character of
+ * the long run behind it before the alternation can match.
+ */
+function backtrackingScrubStringValue(): string
+{
+    return 'token'.str_repeat('a', 50_000).'=x';
+}
+
+/**
+ * Run $callback with PCRE's backtrack limit pinned low, restoring it afterwards
+ * whatever happens — a leaked limit would make every later test's regex give up.
+ */
+function withTinyBacktrackLimit(Closure $callback): mixed
+{
+    $original = ini_get('pcre.backtrack_limit');
+    ini_set('pcre.backtrack_limit', '100');
+
+    try {
+        return $callback();
+    } finally {
+        ini_set('pcre.backtrack_limit', $original === false ? '1000000' : $original);
+    }
+}
 
 test('it redacts values under sensitive keys', function (): void {
     $result = SecretScrubber::scrub([
@@ -107,6 +136,27 @@ test('scrubUrl preserves the fragment', function (): void {
         ->toBe('https://example.com/p?api_key=[REDACTED]#section');
 });
 
+test('scrubUrl redacts a query-shaped fragment', function (): void {
+    // The OAuth implicit flow puts the whole grant in the fragment, so a URL
+    // with no query at all can still carry the token.
+    expect(SecretScrubber::scrubUrl('https://app.test/callback#access_token=abc&expires_in=3600'))
+        ->toBe('https://app.test/callback#access_token=[REDACTED]&expires_in=3600');
+});
+
+test('scrubUrl redacts a query-shaped fragment behind a real query', function (): void {
+    expect(SecretScrubber::scrubUrl('https://app.test/callback?code=1&api_key=k#access_token=abc'))
+        ->toBe('https://app.test/callback?code=1&api_key=[REDACTED]#access_token=[REDACTED]');
+});
+
+test('scrubUrl returns a fragment that is not query-shaped byte-for-byte', function (string $url): void {
+    expect(SecretScrubber::scrubUrl($url))->toBe($url);
+})->with([
+    'anchor behind a query' => ['https://app.test/docs?page=2#section-2'],
+    'anchor on a relative path' => ['/path#anchor'],
+    'spa hash route' => ['https://app.test/app#/reset/abc123'],
+    'empty fragment' => ['https://app.test/docs#'],
+]);
+
 test('scrubUrl leaves urls without sensitive params untouched', function (): void {
     expect(SecretScrubber::scrubUrl('https://example.com/list?page=2&sort=name'))
         ->toBe('https://example.com/list?page=2&sort=name')
@@ -205,6 +255,33 @@ test('scrubUrlPath handles relative urls and urls without a path', function (): 
         ->toBe('https://example.com');
 });
 
+test('scrubUrlPath redacts a sensitive value inside an SPA hash route', function (): void {
+    // A client-side router keeps the whole route in the fragment, so the reset
+    // token lives there rather than in the path the server saw.
+    expect(SecretScrubber::scrubUrlPath('/app#/reset/abc123', ['abc123']))
+        ->toBe('/app#/reset/[REDACTED]')
+        ->and(SecretScrubber::scrubUrlPath('https://app.test/app?page=2#/reset/abc123', ['abc123']))
+        ->toBe('https://app.test/app?page=2#/reset/[REDACTED]');
+});
+
+test('scrubUrlPath leaves a fragment without a sensitive segment byte-for-byte', function (): void {
+    expect(SecretScrubber::scrubUrlPath('/docs#section-2', ['abc123']))->toBe('/docs#section-2');
+});
+
+test('scrubUrlPath finds the path when a :// appears in the query or fragment', function (string $url, string $expected): void {
+    // pathOffset() used to look for `://` anywhere in the string, so a relative
+    // URL carrying an unencoded absolute URL in its query landed the "path"
+    // inside the query and shipped the live token untouched.
+    expect(SecretScrubber::scrubUrlPath($url, ['TOKEN']))->toBe($expected);
+})->with([
+    'relative, no query' => ['/reset-password/TOKEN', '/reset-password/[REDACTED]'],
+    'relative url in the query' => ['/reset-password/TOKEN?next=/account', '/reset-password/[REDACTED]?next=/account'],
+    'absolute url in the query' => ['/reset-password/TOKEN?next=https://app.test/dashboard', '/reset-password/[REDACTED]?next=https://app.test/dashboard'],
+    'absolute url in the fragment' => ['/reset-password/TOKEN#ret=https://app.test/x', '/reset-password/[REDACTED]#ret=https://app.test/x'],
+    'absolute url' => ['https://app.test/reset-password/TOKEN?next=https://other/x', 'https://app.test/reset-password/[REDACTED]?next=https://other/x'],
+    'protocol-relative url' => ['//app.test/reset-password/TOKEN', '//app.test/reset-password/[REDACTED]'],
+]);
+
 test('scrubUrlPath leaves the url untouched without sensitive values', function (): void {
     expect(SecretScrubber::scrubUrlPath('https://example.com/reset/abc123', []))
         ->toBe('https://example.com/reset/abc123')
@@ -226,6 +303,29 @@ test('scrubString redacts query-string secrets while keeping the rest', function
     $scrubbed = SecretScrubber::scrubString('GET https://api.test/v1?api_key=secret&page=2');
 
     expect($scrubbed)->toContain('api_key=[REDACTED]')->and($scrubbed)->toContain('page=2');
+});
+
+test('scrubString fails closed when the regex engine gives up', function (): void {
+    // preg_replace_callback() returns null when PCRE gives up, and returning the
+    // input on that path hands an UNSCRUBBED string to a caller that believes it
+    // was scrubbed. Losing the value beats leaking it.
+    $value = backtrackingScrubStringValue();
+
+    $scrubbed = withTinyBacktrackLimit(static fn (): string => SecretScrubber::scrubString($value));
+
+    expect($scrubbed)->toBe('[REDACTED]')
+        ->and($scrubbed)->not->toBe($value);
+});
+
+test('scrubString reports the regex give-up on the internal channel', function (): void {
+    $logger = Mockery::spy(LoggerInterface::class);
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    withTinyBacktrackLimit(static fn (): string => SecretScrubber::scrubString(backtrackingScrubStringValue()));
+
+    $logger->shouldHaveReceived('warning')->withArgs(
+        fn (string $message, array $context): bool => str_contains($context['error'] ?? '', 'Backtrack limit')
+    );
 });
 
 test('scrubString leaves strings without sensitive keys untouched', function (): void {

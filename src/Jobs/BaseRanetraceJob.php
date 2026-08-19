@@ -89,10 +89,17 @@ abstract class BaseRanetraceJob implements ShouldQueue
      * "lose data before crashing the host" contract. release() never throws into
      * the host (and is a no-op for inline/sync dispatch).
      *
-     * @param  array<string, mixed>  $payload
+     * A null payload is an item {@see capItemBytes()} already dropped for being
+     * irreducibly over budget; there is nothing left to buffer or retry.
+     *
+     * @param  array<string, mixed>|null  $payload
      */
-    protected function bufferOrRelease(RanetraceBatchBuffer $buffer, string $type, array $payload): void
+    protected function bufferOrRelease(RanetraceBatchBuffer $buffer, string $type, ?array $payload): void
     {
+        if ($payload === null) {
+            return;
+        }
+
         if ($buffer->addItem($type, $payload)) {
             return;
         }
@@ -106,9 +113,9 @@ abstract class BaseRanetraceJob implements ShouldQueue
      * Filter payload to only include allowed keys.
      *
      * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null Null when the item was over budget and dropped, see {@see capItemBytes()}.
      */
-    protected function filterPayload(array $data): array
+    protected function filterPayload(array $data): ?array
     {
         return $this->capItemBytes(
             collect($data)
@@ -124,13 +131,13 @@ abstract class BaseRanetraceJob implements ShouldQueue
      * expose a secret past a redaction. Oversize free-form strings are cut
      * first, then oversize sub-arrays replaced wholesale (truncating a
      * structure mid-way yields invalid JSON). An item that is somehow still
-     * over budget after both is reduced to a marker: losing one item beats
-     * losing the batch it would have poisoned.
+     * over budget after both is dropped outright: losing one item beats losing
+     * the batch it would have poisoned.
      *
      * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null Null when the item is irreducibly over budget and must not be buffered.
      */
-    protected function capItemBytes(array $payload): array
+    protected function capItemBytes(array $payload): ?array
     {
         if (self::encodedBytes($payload) <= self::MAX_ITEM_BYTES) {
             return $payload;
@@ -152,8 +159,20 @@ abstract class BaseRanetraceJob implements ShouldQueue
             }
         }
 
+        // Still over budget. The item is dropped rather than replaced with a
+        // marker payload: the wire shape is an allow-list per type, so a marker
+        // key belongs to no type and the backend's strict field matching would
+        // 422 the item — discarding the whole batch of up to 1000 items and
+        // pausing the type, which is precisely the failure this budget exists
+        // to prevent. Dropping loses one item and nothing else, and the internal
+        // log keeps that loss visible.
         if (self::encodedBytes($payload) > self::MAX_ITEM_BYTES) {
-            $payload = ['_truncated' => 'Item exceeded the per-item byte budget and was dropped'];
+            InternalLogger::warning('Captured item exceeded the per-item byte budget and was dropped', [
+                'type' => static::class,
+                'max_bytes' => self::MAX_ITEM_BYTES,
+            ]);
+
+            return null;
         }
 
         InternalLogger::warning('Captured item exceeded the per-item byte budget and was shrunk', [

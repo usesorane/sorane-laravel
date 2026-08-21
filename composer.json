@@ -19,14 +19,8 @@
         "php": "^8.4",
         "illuminate/support": "^12.0||^13.0",
         "jaybizzle/crawler-detect": "^1.3",
-        "ranetrace/ranetrace-php": "@dev"
+        "ranetrace/ranetrace-php": "^1.0"
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../ranetrace-php"
-        }
-    ],
     "require-dev": {
         "larastan/larastan": "^3.0",
         "laravel/boost": "^2.0",

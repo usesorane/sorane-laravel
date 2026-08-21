@@ -28,22 +28,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # The wire-contract fixtures are a dev dependency resolved from a path
-      # repository at ../ranetrace-php (see composer.json). That repository is
-      # private, so this step needs the CONTRACT_REPO_TOKEN secret (a token
-      # with read access to ranetrace/ranetrace-php). This whole step goes away
-      # once ranetrace-php is on Packagist and the dev dependency becomes a
-      # version constraint.
-      - name: Checkout ranetrace-php (wire-contract dev dependency)
-        uses: actions/checkout@v4
-        with:
-          repository: ranetrace/ranetrace-php
-          token: ${{ secrets.CONTRACT_REPO_TOKEN || github.token }}
-          path: .ranetrace-php-checkout
-
-      - name: Place ranetrace-php beside this checkout
-        run: mv .ranetrace-php-checkout ../ranetrace-php
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:

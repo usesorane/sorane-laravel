@@ -92,9 +92,13 @@ test('a capture job allow-lists exactly the fields its endpoint declares', funct
  */
 test('the error allow-list has retired the legacy laravel_version key', function (): void {
     $allowed = contractCaptureJobAllowedKeys(HandleErrorJob::class);
-    $legacy = array_keys(WireContract::item('errors')['legacy_fields']);
+
+    // Older fixture versions listed the retired spelling under legacy_fields;
+    // the key is gone from the contract since the ingest dropped it, so the
+    // name is pinned here as well rather than read from the fixture.
+    $legacy = array_keys(WireContract::item('errors')['legacy_fields'] ?? []);
 
     expect($allowed)
-        ->not->toContain(...$legacy)
+        ->not->toContain('laravel_version', ...$legacy)
         ->toContain('framework', 'framework_version');
 });

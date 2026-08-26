@@ -8,7 +8,7 @@ Ranetrace is an all-in-one monitoring package for Laravel providing error tracki
 - All env vars are prefixed with `RANETRACE_`
 - Required: set `RANETRACE_KEY` and `RANETRACE_ENABLED=true` in `.env`
 - Each feature has its own `enabled` toggle and can run via queue or synchronously
-- **Two credentials, never interchangeable.** `RANETRACE_KEY` is the ingest key: it writes captured telemetry in and belongs on every server. `RANETRACE_MCP_TOKEN` is the MCP token: it reads data back out for the MCP tools and belongs on the machine running the MCP client. Sending the ingest key to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`.
+- **Two credentials, never interchangeable.** `RANETRACE_KEY` is the ingest key: it writes captured telemetry in and belongs on every server, in `.env`. The MCP token is the other one: it reads data back out for the MCP tools and belongs on the machine running the MCP client, in that client's `Authorization: Bearer` header. Sending the ingest key to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`.
 
 ### Features & Env Vars
 
@@ -66,9 +66,19 @@ The package **always registers** a `ranetrace` log channel, regardless of the fe
 
 ### MCP Server
 
-Ranetrace includes an MCP server (`ranetrace`) with 31 tools: 24 for error investigation, note management and error state management, plus 7 monitor tools. It is auto-registered when `laravel/mcp` is installed and `RANETRACE_MCP_TOKEN` is set. No token means no MCP server, which is the intended state in production.
+Ranetrace hosts an MCP server with 31 tools: 24 for error investigation, note management and error state management, plus 7 monitor tools. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
 
-Create the token on the website's `/mcp` page in Ranetrace. Prefer putting it in the MCP client's own server entry (`claude mcp add ranetrace -e RANETRACE_MCP_TOKEN=<token> -- php artisan mcp:start ranetrace`); `.env` also works, and is required when the app runs `config:cache`, since a cached config never sees the client's env block.
+Create a token on the website's `/mcp` page in Ranetrace (one per agent, each named for where it runs) and add the server to the MCP client:
+
+@verbatim
+<code-snippet name="Add the hosted Ranetrace MCP server" lang="bash">
+claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
+</code-snippet>
+@endverbatim
+
+Clients configured from a file (Cursor, VS Code) read the same server as an `mcpServers` entry with `"type": "http"`, the same URL, and the same `Authorization` header.
+
+**The local MCP server is deprecated.** The `php artisan mcp:start ranetrace` server this package used to register, gated on `laravel/mcp` and `RANETRACE_MCP_TOKEN`, still works and answers with the same tools, but the hosted server replaces it and it is removed in the next major release. Do not set it up in new applications; move existing ones by pointing the client at the hosted URL with the same token.
 
 The monitor tools are `get-monitor-status-tool` (which of my monitors needs a look), plus `get-uptime-status-tool`, `get-performance-stats-tool`, `get-lighthouse-audit-tool`, `get-certificate-status-tool`, `get-domain-status-tool` and `get-broken-links-tool`. None takes parameters: the token scopes every call to one website. Each answers verdict first (what we found, why it matters, what to do) with the raw data following, so pass the verdict on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` rather than returning stale figures.
 

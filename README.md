@@ -189,41 +189,41 @@ See the [Ranetrace website](https://ranetrace.com) for dashboard setup and confi
 
 ## MCP server
 
-Ranetrace ships an MCP server so an agent can investigate errors and read your website's monitor verdicts without leaving the editor. It needs `laravel/mcp` installed, and an MCP token, which you create on your website's `/mcp` page in Ranetrace.
+Ranetrace hosts an MCP server so an agent can investigate errors and read your website's monitor verdicts without leaving the editor. It runs on Ranetrace, not in your application, so there is nothing to install and nothing to keep running. All you need is an MCP token, which you create on your website's `/mcp` page in Ranetrace.
 
-The MCP token is a separate credential from `RANETRACE_KEY`. The key sends captured data in and lives on every production server; the token reads data back out and belongs on the machine running the MCP client. Without a token no MCP server is registered at all, which is what you want in production.
+The MCP token is a separate credential from `RANETRACE_KEY`. The key sends captured data in and lives on every production server; the token reads data back out and belongs on the machine running the MCP client. You can create as many tokens as you have agents, each named for where it runs, so revoking one leaves the others working.
 
 ### Configure it in your MCP client
 
-Put the token in the server entry, so it stays with the client that uses it rather than in your application's environment:
+The token travels as a bearer header, which keeps it with the client that uses it rather than in your application's environment:
 
 ```bash
-claude mcp add ranetrace -e RANETRACE_MCP_TOKEN=<token> -- php artisan mcp:start ranetrace
+claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
 ```
 
-The same works in any client that supports an `env` block on a server entry, with local scope:
+Clients that are configured from a file, Cursor and VS Code among them, read the same server as an `mcpServers` entry:
 
 ```json
 {
   "mcpServers": {
     "ranetrace": {
-      "command": "php",
-      "args": ["artisan", "mcp:start", "ranetrace"],
-      "env": {
-        "RANETRACE_MCP_TOKEN": "<token>"
-      }
+      "type": "http",
+      "url": "https://api.ranetrace.com/mcp",
+      "headers": { "Authorization": "Bearer <token>" }
     }
   }
 }
 ```
 
-### Or configure it in .env
+### The local MCP server is deprecated
 
-```env
-RANETRACE_MCP_TOKEN=your-mcp-token-here
+Before the hosted server existed, this package shipped its own MCP server, registered when `laravel/mcp` was installed and `RANETRACE_MCP_TOKEN` was set:
+
+```bash
+claude mcp add ranetrace -e RANETRACE_MCP_TOKEN=<token> -- php artisan mcp:start ranetrace
 ```
 
-> If you run `php artisan config:cache`, the token must be in `.env` (and the config cache rebuilt). A cached config is read from disk and never sees the environment your MCP client passes in, so a client-side `env` block alone leaves the server unregistered. Without a config cache, setting both is harmless: a real process env var (the client's env block) wins over `.env` in Laravel.
+It still works and it still answers with the same tools, but it is deprecated. The hosted remote server replaces it, and the local server and its tools are removed in the next major release. Moving over is one line of client config: point the client at `https://api.ranetrace.com/mcp` with the command above, using the same token. You can then drop `RANETRACE_MCP_TOKEN` from your `.env` and `laravel/mcp` from your application, if nothing else needs them.
 
 ### What the tools answer
 

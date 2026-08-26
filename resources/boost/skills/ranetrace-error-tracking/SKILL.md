@@ -60,21 +60,37 @@ Each error report includes:
 
 ## MCP Tools for Error Investigation
 
-The Ranetrace MCP server provides 31 tools: the 24 error and note tools below, plus 7 monitor tools (see *Monitor tools* at the end). They are available when `laravel/mcp` is installed and an MCP token is configured.
+Ranetrace hosts an MCP server with 31 tools: the 24 error and note tools below, plus 7 monitor tools (see *Monitor tools* at the end). It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running. All it needs is an MCP token.
 
 ### The MCP token is not the ingest key
 
-The tools authenticate with `RANETRACE_MCP_TOKEN`, a separate credential from `RANETRACE_KEY`. The key writes captured telemetry in and lives on every server; the token reads data back out and belongs on the machine running the MCP client. Create it on the website's `/mcp` page in Ranetrace.
+The tools authenticate with an MCP token, a separate credential from `RANETRACE_KEY`. The key writes captured telemetry in and lives on every server; the token reads data back out and belongs on the machine running the MCP client. Create it on the website's `/mcp` page in Ranetrace, where you can mint one per agent, each named for where it runs, so revoking one leaves the others working.
 
-Prefer the MCP client's own server entry, so the credential stays with the client that uses it:
+The token travels as a bearer header, so it stays with the client that uses it:
 
 ```bash
-claude mcp add ranetrace -e RANETRACE_MCP_TOKEN=<token> -- php artisan mcp:start ranetrace
+claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
 ```
 
-`.env` works too, and is required for apps that run `config:cache`: a cached config never sees the env block the client passes in. When both are set, the client's env block wins: Laravel reads a real process env var over `.env`.
+Clients configured from a file, Cursor and VS Code among them, read the same server as an `mcpServers` entry:
 
-Without a token no MCP server is registered at all. An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
+```json
+{
+  "mcpServers": {
+    "ranetrace": {
+      "type": "http",
+      "url": "https://api.ranetrace.com/mcp",
+      "headers": { "Authorization": "Bearer <token>" }
+    }
+  }
+}
+```
+
+An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
+
+### The local MCP server is deprecated
+
+This package also registers a local MCP server when `laravel/mcp` is installed and `RANETRACE_MCP_TOKEN` is set (`php artisan mcp:start ranetrace`). It answers with the same tools and still works, but the hosted server replaces it and it is removed in the next major release. Do not set it up in new applications. To move an existing one, point the client at the hosted URL above with the same token, then drop `RANETRACE_MCP_TOKEN` from `.env`.
 
 ### Retrieving Errors
 

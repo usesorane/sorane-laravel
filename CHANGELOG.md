@@ -6,6 +6,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Deprecated
+- **The local MCP server is deprecated and will be removed in the next major release.** Ranetrace now hosts the same 31 tools itself, over Streamable HTTP at `https://api.ranetrace.com/mcp`, authenticated with the same MCP token sent as an `Authorization: Bearer` header. Nothing has to run in your application, and `RANETRACE_MCP_TOKEN` no longer has to sit in `.env`. Move a client over by replacing its server entry with `claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"`, or the equivalent `mcpServers` block with `"type": "http"`. Tool names, parameters and output are unchanged, so nothing an agent already knows has to change. Nothing is removed in this release: `php artisan mcp:start ranetrace` and `config('ranetrace.mcp')` keep working exactly as before. The `/mcp` page in Ranetrace now issues a named token per agent, so each client can be revoked on its own
+
 ### Changed
 - `RanetraceApiClient` no longer hardcodes the API base URL. It resolves `base_url` through the shared core config, exactly as `ranetrace/ranetrace-php`'s client does — same fallback to the built-in default, same trailing-slash trim — so both SDKs address the same host and a non-production API can be pointed at without editing the package. The resolved value covers every request the client sends: the five ingest batch endpoints and all MCP read calls. Nothing changes for an application that configures nothing: the default is the same URL as before
 

@@ -138,19 +138,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | MCP Server
+    | MCP Server (deprecated)
     |--------------------------------------------------------------------------
     |
-    | The MCP server reads your Ranetrace account through a *different*
-    | credential than the ingest key at the top of this file. `key` writes
-    | captured telemetry in; `token` reads errors, notes and monitor verdicts
-    | back out, scoped by the abilities it was created with. They are
-    | deliberately not interchangeable: an ingest key is deployed to every
-    | production server, while an MCP token belongs on the developer machine
-    | running the MCP client.
+    | These settings configure the LOCAL MCP server this package registers, and
+    | it is deprecated. Ranetrace now hosts the same 31 tools itself, over
+    | Streamable HTTP at https://api.ranetrace.com/mcp, so nothing has to run in
+    | your application. Point your MCP client there with the token as an
+    | Authorization: Bearer header instead. The local server is removed in the
+    | next major release.
     |
-    | Create the token on the website's /mcp page in Ranetrace. Without it no
-    | MCP server is registered at all, which is what you want in production.
+    | Either way the MCP token is a *different* credential than the ingest key
+    | at the top of this file. `key` writes captured telemetry in; the MCP token
+    | reads errors, notes and monitor verdicts back out, scoped by the abilities
+    | it was created with. They are deliberately not interchangeable: an ingest
+    | key is deployed to every production server, while an MCP token belongs on
+    | the developer machine running the MCP client.
+    |
+    | Create the token on the website's /mcp page in Ranetrace. Without `token`
+    | set here, no local MCP server is registered at all, which is what you want
+    | in production.
     |
     */
     'mcp' => [

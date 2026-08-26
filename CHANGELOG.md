@@ -4,6 +4,11 @@ All notable changes to `ranetrace-laravel` will be documented in this file.
 
 This file starts at 1.0.0. The package was re-versioned to share a major with `ranetrace/ranetrace-php`, which it now requires; the releases before that point are not recorded here, the git history is the record for those.
 
+## [Unreleased]
+
+### Changed
+- `RanetraceApiClient` no longer hardcodes the API base URL. It resolves `base_url` through the shared core config, exactly as `ranetrace/ranetrace-php`'s client does — same fallback to the built-in default, same trailing-slash trim — so both SDKs address the same host and a non-production API can be pointed at without editing the package. The resolved value covers every request the client sends: the five ingest batch endpoints and all MCP read calls. Nothing changes for an application that configures nothing: the default is the same URL as before
+
 ## [1.0.0] - 2026-08-21
 
 ### Added

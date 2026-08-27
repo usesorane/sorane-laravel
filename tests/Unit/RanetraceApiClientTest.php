@@ -166,16 +166,6 @@ test('it sends batches to the configured base url', function (): void {
     Http::assertSent(fn ($request): bool => $request->url() === 'https://ranetrace.test/v1/errors/store');
 });
 
-test('it sends mcp reads to the configured base url', function (): void {
-    Http::fake();
-    config(['ranetrace.base_url' => 'https://ranetrace.test/v1']);
-    $client = new RanetraceApiClient('test-key');
-
-    $client->getMonitorStatus();
-
-    Http::assertSent(fn ($request): bool => $request->url() === 'https://ranetrace.test/v1/monitors/status');
-});
-
 test('it trims a trailing slash from the configured base url', function (): void {
     Http::fake();
     config(['ranetrace.base_url' => 'https://ranetrace.test/v1/']);

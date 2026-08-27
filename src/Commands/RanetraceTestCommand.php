@@ -155,16 +155,6 @@ class RanetraceTestCommand extends Command
 
         $this->info('✅ Ingest API key configured: '.mb_substr($config['key'], 0, 4).'******');
 
-        // The MCP token is the other half of the pair: it reads data back out
-        // for the MCP tools and belongs on a developer's machine, so a
-        // production install without one is correct rather than broken.
-        if (empty($config['mcp']['token'])) {
-            $this->line('○ MCP token not set — no MCP server is registered, so the MCP tools are unavailable.');
-            $this->info("💡 Create one on the website's /mcp page in Ranetrace, then set RANETRACE_MCP_TOKEN in your MCP client's server entry (or in .env).");
-        } else {
-            $this->info('✅ MCP token configured: '.mb_substr((string) $config['mcp']['token'], 0, 4).'******');
-        }
-
         $this->newLine();
 
         // Check each feature configuration

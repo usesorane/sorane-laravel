@@ -78,7 +78,7 @@ claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header
 
 Clients configured from a file (Cursor, VS Code) read the same server as an `mcpServers` entry with `"type": "http"`, the same URL, and the same `Authorization` header.
 
-**The local MCP server is deprecated.** The `php artisan mcp:start ranetrace` server this package used to register, gated on `laravel/mcp` and `RANETRACE_MCP_TOKEN`, still works and answers with the same tools, but the hosted server replaces it and it is removed in the next major release. Do not set it up in new applications; move existing ones by pointing the client at the hosted URL with the same token.
+**The local MCP server has been removed.** The `php artisan mcp:start ranetrace` server this package used to register, gated on `laravel/mcp` and `RANETRACE_MCP_TOKEN`, is gone, and so is the `ranetrace.mcp` config block. An application that still has `RANETRACE_MCP_TOKEN` in `.env` should move it to the MCP client as the `Authorization: Bearer` header above and drop it from `.env`.
 
 The monitor tools are `get-monitor-status-tool` (which of my monitors needs a look), plus `get-uptime-status-tool`, `get-performance-stats-tool`, `get-lighthouse-audit-tool`, `get-certificate-status-tool`, `get-domain-status-tool` and `get-broken-links-tool`. None takes parameters: the token scopes every call to one website. Each answers verdict first (what we found, why it matters, what to do) with the raw data following, so pass the verdict on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` rather than returning stale figures.
 

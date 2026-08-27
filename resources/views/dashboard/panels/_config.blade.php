@@ -2,14 +2,12 @@
     $cfg = $status['config'] ?? [];
     $enabled = $cfg['enabled'] ?? false;
     $keyConfigured = $cfg['api_key_configured'] ?? false;
-    $mcpTokenConfigured = $cfg['mcp_token_configured'] ?? false;
     $features = [
         'errors' => 'ranetrace.errors.enabled',
         'events' => 'ranetrace.events.enabled',
         'logging' => 'ranetrace.logging.enabled',
         'website_analytics' => 'ranetrace.website_analytics.enabled',
         'javascript_errors' => 'ranetrace.javascript_errors.enabled',
-        'mcp' => 'ranetrace.mcp.enabled',
     ];
 @endphp
 <section class="rt-panel">
@@ -27,14 +25,6 @@
             <span class="rt-kv__key">Ingest API key</span>
             <span class="rt-kv__val">
                 <span class="rt-pill rt-pill--{{ $keyConfigured ? 'ok' : 'bad' }}">{{ $keyConfigured ? 'Configured' : 'Missing' }}</span>
-            </span>
-        </div>
-        {{-- The MCP token is a separate credential and is *expected* to be absent
-             in production, so a missing one is muted rather than flagged bad. --}}
-        <div class="rt-kv">
-            <span class="rt-kv__key">MCP token</span>
-            <span class="rt-kv__val">
-                <span class="rt-pill rt-pill--{{ $mcpTokenConfigured ? 'ok' : 'muted' }}">{{ $mcpTokenConfigured ? 'Configured' : 'Not set' }}</span>
             </span>
         </div>
         <div class="rt-kv">

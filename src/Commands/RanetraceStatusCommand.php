@@ -59,10 +59,6 @@ class RanetraceStatusCommand extends Command
         $this->line('─────────────────────────────────────────────────────────────');
         $this->line('Enabled: '.($status['config']['enabled'] ? '<fg=green>Yes</>' : '<fg=red>No</>'));
         $this->line('Ingest API Key: '.($status['config']['api_key_configured'] ? '<fg=green>Configured</>' : '<fg=red>Not Configured</>'));
-        // The MCP token is a different credential with a different job, and a
-        // production host is expected not to carry one — so it is reported, but
-        // never in red.
-        $this->line('MCP Token: '.(($status['config']['mcp_token_configured'] ?? false) ? '<fg=green>Configured</>' : '<fg=gray>Not set (MCP tools disabled)</>'));
         $this->line('Cache Driver: '.$status['config']['cache_driver']);
         $this->line('Queue Name: '.$status['config']['queue_name']);
         $this->newLine();
@@ -179,7 +175,7 @@ class RanetraceStatusCommand extends Command
             }
 
             if (! $status['config']['api_key_configured']) {
-                $this->line('• Configure RANETRACE_KEY in .env (the ingest key; the MCP tools use RANETRACE_MCP_TOKEN)');
+                $this->line('• Configure RANETRACE_KEY in .env (the ingest key; the MCP tools use a separate token, held by your MCP client)');
             }
 
             if ($status['pauses']['global']) {

@@ -4,6 +4,13 @@ All notable changes to `ranetrace-laravel` will be documented in this file.
 
 This file starts at 1.0.0. The package was re-versioned to share a major with `ranetrace/ranetrace-php`, which it now requires; the releases before that point are not recorded here, the git history is the record for those.
 
+## [Unreleased]
+
+### Removed
+- **The local MCP server, its 31 tools and the `ranetrace.mcp` config block are gone.** Ranetrace hosts the same 31 tools itself, over Streamable HTTP at `https://api.ranetrace.com/mcp`, so nothing has to run in your application and nothing has to be installed for it. Moving over is two steps and touches only your MCP client: create a token on your website's `/mcp` page in Ranetrace, then add the server with `claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"`, or the equivalent `mcpServers` entry with `"type": "http"`, the same URL and the same header. Tool names, parameters and output are unchanged, so nothing an agent already knows has to change. `RANETRACE_MCP_ENABLED` and `RANETRACE_MCP_TOKEN` are no longer read anywhere: drop them from `.env`, and drop `laravel/mcp` from your application if nothing else needs it. The 1.1.0 entry below promised this removal in the next major release; it lands here, in a patch release, by the maintainer's deliberate choice as the package's only consumer
+- `RanetraceApiClient`'s read methods, which existed only to serve those tools: the error, note and error-state calls and the seven monitor reads, along with the retry helper and the `MCP_TOKEN_REQUIRED` message handling they used. The five ingest batch methods and everything the batch worker touches are unchanged
+- The diagnostics dashboard, `ranetrace:status` and `ranetrace:test` no longer report an MCP token or an MCP server surface. The token belongs with the MCP client now, so this application has nothing left to say about it. The two credentials stay as distinct as they were: `RANETRACE_KEY` writes captured telemetry in and belongs on every server, the MCP token reads data back out and belongs with the client
+
 ## [1.1.0] - 2026-08-27
 
 ### Deprecated

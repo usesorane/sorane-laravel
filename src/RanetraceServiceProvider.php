@@ -8,7 +8,6 @@ use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
-use Laravel\Mcp\Facades\Mcp;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\Commands\RanetraceAnalyticsTestCommand;
 use Ranetrace\Laravel\Commands\RanetraceErrorTestCommand;
@@ -25,8 +24,6 @@ use Ranetrace\Laravel\Http\Controllers\AssetController;
 use Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController;
 use Ranetrace\Laravel\Http\Middleware\Authorize;
 use Ranetrace\Laravel\Logging\RanetraceLogDriver;
-use Ranetrace\Laravel\Mcp\RanetraceServer;
-use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class RanetraceServiceProvider extends ServiceProvider
 {
@@ -50,8 +47,6 @@ class RanetraceServiceProvider extends ServiceProvider
         $this->app['log']->extend('ranetrace', function ($app, $config) {
             return (new RanetraceLogDriver)($config);
         });
-
-        $this->registerMcpApiClient();
     }
 
     public function boot(): void
@@ -97,43 +92,8 @@ class RanetraceServiceProvider extends ServiceProvider
         // Register Blade directive for error tracking script
         $this->registerBladeDirectives();
 
-        // Register MCP server
-        $this->registerMcpServer();
-
         // Register the in-app diagnostics dashboard
         $this->registerDashboard();
-    }
-
-    /**
-     * Give the MCP tools an API client that talks with the MCP token, while
-     * everything else — the batch worker above all — keeps the ingest key.
-     *
-     * The two credentials are not interchangeable: the ingest key writes
-     * telemetry in and lives on every production server, the MCP token reads
-     * data back out and lives on a developer's machine. {@see RanetraceApiClient}
-     * takes its credential through the constructor and has no binding of its
-     * own, so one contextual binding per tool class is the whole seam — no tool
-     * constructor knows which credential it was handed.
-     *
-     * The class list is {@see RanetraceServer::TOOLS}, the same list the server
-     * registers, so a tool added there is bound here automatically instead of
-     * silently resolving the default client and authenticating as the ingest
-     * key.
-     */
-    protected function registerMcpApiClient(): void
-    {
-        if (! class_exists(Mcp::class)) {
-            return;
-        }
-
-        foreach (RanetraceServer::TOOLS as $tool) {
-            $this->app->when($tool)
-                ->needs(RanetraceApiClient::class)
-                // Cast rather than pass through: a null token would hit the
-                // client's own fallback to `ranetrace.key`, quietly reviving
-                // the conflation this binding exists to end.
-                ->give(fn (): RanetraceApiClient => new RanetraceApiClient((string) config('ranetrace.mcp.token')));
-        }
     }
 
     /**
@@ -277,26 +237,5 @@ class RanetraceServiceProvider extends ServiceProvider
         //        Blade::directive('ranetraceAnalytics', function () {
         /*            return "<?php echo view('ranetrace::analytics-beacon')->render(); ?>"; */
         //        });
-    }
-
-    protected function registerMcpServer(): void
-    {
-        if (! class_exists(Mcp::class)) {
-            return;
-        }
-
-        if (! config('ranetrace.mcp.enabled', true)) {
-            return;
-        }
-
-        // The MCP token, not the ingest key: this server exists to read data
-        // back out, and the token is what the API accepts for that. Gating on
-        // it also keeps the server off production hosts, which hold an ingest
-        // key and no token.
-        if (empty(config('ranetrace.mcp.token'))) {
-            return;
-        }
-
-        Mcp::local('ranetrace', RanetraceServer::class);
     }
 }

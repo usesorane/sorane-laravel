@@ -215,15 +215,11 @@ Clients that are configured from a file, Cursor and VS Code among them, read the
 }
 ```
 
-### The local MCP server is deprecated
+### The local MCP server has been removed
 
-Before the hosted server existed, this package shipped its own MCP server, registered when `laravel/mcp` was installed and `RANETRACE_MCP_TOKEN` was set:
+Before the hosted server existed, this package shipped its own MCP server, registered when `laravel/mcp` was installed and `RANETRACE_MCP_TOKEN` was set. That server, its tools and the `ranetrace.mcp` config block are gone.
 
-```bash
-claude mcp add ranetrace -e RANETRACE_MCP_TOKEN=<token> -- php artisan mcp:start ranetrace
-```
-
-It still works and it still answers with the same tools, but it is deprecated. The hosted remote server replaces it, and the local server and its tools are removed in the next major release. Moving over is one line of client config: point the client at `https://api.ranetrace.com/mcp` with the command above, using the same token. You can then drop `RANETRACE_MCP_TOKEN` from your `.env` and `laravel/mcp` from your application, if nothing else needs them.
+Moving over is one line of client config: point the client at `https://api.ranetrace.com/mcp` with the command above, using the same token. You can then drop `RANETRACE_MCP_TOKEN` from your `.env` and `laravel/mcp` from your application, if nothing else needs them.
 
 ### What the tools answer
 

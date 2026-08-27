@@ -88,9 +88,9 @@ Clients configured from a file, Cursor and VS Code among them, read the same ser
 
 An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
 
-### The local MCP server is deprecated
+### The local MCP server has been removed
 
-This package also registers a local MCP server when `laravel/mcp` is installed and `RANETRACE_MCP_TOKEN` is set (`php artisan mcp:start ranetrace`). It answers with the same tools and still works, but the hosted server replaces it and it is removed in the next major release. Do not set it up in new applications. To move an existing one, point the client at the hosted URL above with the same token, then drop `RANETRACE_MCP_TOKEN` from `.env`.
+This package used to register a local MCP server when `laravel/mcp` was installed and `RANETRACE_MCP_TOKEN` was set (`php artisan mcp:start ranetrace`). That server, its tools and the `ranetrace.mcp` config block are gone; the hosted server above is the only one. To move an application that still has the old setup, point the client at the hosted URL with the same token, then drop `RANETRACE_MCP_TOKEN` from `.env`.
 
 ### Retrieving Errors
 

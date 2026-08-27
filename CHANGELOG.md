@@ -4,7 +4,7 @@ All notable changes to `ranetrace-laravel` will be documented in this file.
 
 This file starts at 1.0.0. The package was re-versioned to share a major with `ranetrace/ranetrace-php`, which it now requires; the releases before that point are not recorded here, the git history is the record for those.
 
-## [Unreleased]
+## [1.1.0] - 2026-08-27
 
 ### Deprecated
 - **The local MCP server is deprecated and will be removed in the next major release.** Ranetrace now hosts the same 31 tools itself, over Streamable HTTP at `https://api.ranetrace.com/mcp`, authenticated with the same MCP token sent as an `Authorization: Bearer` header. Nothing has to run in your application, and `RANETRACE_MCP_TOKEN` no longer has to sit in `.env`. Move a client over by replacing its server entry with `claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"`, or the equivalent `mcpServers` block with `"type": "http"`. Tool names, parameters and output are unchanged, so nothing an agent already knows has to change. Nothing is removed in this release: `php artisan mcp:start ranetrace` and `config('ranetrace.mcp')` keep working exactly as before. The `/mcp` page in Ranetrace now issues a named token per agent, so each client can be revoked on its own

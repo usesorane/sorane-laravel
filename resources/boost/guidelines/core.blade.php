@@ -8,7 +8,7 @@ Ranetrace is an all-in-one monitoring package for Laravel providing error tracki
 - All env vars are prefixed with `RANETRACE_`
 - Required: set `RANETRACE_KEY` and `RANETRACE_ENABLED=true` in `.env`
 - Each feature has its own `enabled` toggle and can run via queue or synchronously
-- **Two credentials, never interchangeable.** `RANETRACE_KEY` is the ingest key: it writes captured telemetry in and belongs on every server, in `.env`. The MCP token is the other one: it reads data back out for the MCP tools and belongs on the machine running the MCP client, in that client's `Authorization: Bearer` header. Sending the ingest key to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`.
+- **`RANETRACE_KEY` is the ingest key and nothing else.** It writes captured telemetry in and belongs on every server, in `.env`. Reading data back out is the MCP server's job, and it uses its own credential, held by the MCP client rather than by the application: an OAuth connection the user approves in the browser, or, on the deprecated path, an MCP token in that client's `Authorization: Bearer` header. Sending the ingest key to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`. Never put an MCP credential in `.env`.
 
 ### Features & Env Vars
 
@@ -66,21 +66,25 @@ The package **always registers** a `ranetrace` log channel, regardless of the fe
 
 ### MCP Server
 
-Ranetrace hosts an MCP server with 31 tools: 24 for error investigation, note management and error state management, plus 7 monitor tools. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
+Ranetrace hosts an MCP server with 33 tools: 24 for error investigation, note management and error state management, 7 monitor tools, and 2 for notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
 
-Create a token on the website's `/mcp` page in Ranetrace (one per agent, each named for where it runs) and add the server to the MCP client:
+**Connect over OAuth.** Any MCP client that supports OAuth connects with no pre-shared secret: add the server URL, and the client registers itself, sends the user to Ranetrace's approval screen, and gets its own credential back.
 
 @verbatim
 <code-snippet name="Add the hosted Ranetrace MCP server" lang="bash">
-claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
+claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
 </code-snippet>
 @endverbatim
 
-Clients configured from a file (Cursor, VS Code) read the same server as an `mcpServers` entry with `"type": "http"`, the same URL, and the same `Authorization` header.
+On claude.ai the same URL is added as a custom connector. Clients configured from a file (Cursor, VS Code) read the same server as an `mcpServers` entry with `"type": "http"` and the same URL, and need no `Authorization` header.
 
-**The local MCP server has been removed.** The `php artisan mcp:start ranetrace` server this package used to register, gated on `laravel/mcp` and `RANETRACE_MCP_TOKEN`, is gone, and so is the `ranetrace.mcp` config block. An application that still has `RANETRACE_MCP_TOKEN` in `.env` should move it to the MCP client as the `Authorization: Bearer` header above and drop it from `.env`.
+At the approval screen the user picks **exactly one website** the connection may reach, and whether the agent may write. Writes are off by default: a read-only connection reads errors, monitors, notes and notification rules, and does not see the write tools at all (they are absent from `tools/list`, not refused at call time). Turning on write actions adds error state changes, note create/update/delete, and notification-rule updates. Connections are listed and revoked on the account's agent connections page in Ranetrace, at `/user/profile/connections`. A headless machine can use the device authorization grant instead, entering its code at `https://app.ranetrace.com/oauth/device`.
 
-The monitor tools are `get-monitor-status-tool` (which of my monitors needs a look), plus `get-uptime-status-tool`, `get-performance-stats-tool`, `get-lighthouse-audit-tool`, `get-certificate-status-tool`, `get-domain-status-tool` and `get-broken-links-tool`. None takes parameters: the token scopes every call to one website. Each answers verdict first (what we found, why it matters, what to do) with the raw data following, so pass the verdict on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` rather than returning stale figures.
+**MCP tokens are deprecated.** A static per-website token, minted on the website's `/mcp` page and sent as `Authorization: Bearer <token>`, is still accepted and still minted, but only until the migration window closes. It names one website and always allows writes. Use the OAuth connection above for anything new.
+
+**The local MCP server has been removed.** The `php artisan mcp:start ranetrace` server this package used to register, gated on `laravel/mcp` and `RANETRACE_MCP_TOKEN`, is gone, and so is the `ranetrace.mcp` config block. An application that still has `RANETRACE_MCP_TOKEN` in `.env` should drop it and connect the MCP client over OAuth.
+
+The monitor tools are `get-monitor-status-tool` (which of my monitors needs a look), plus `get-uptime-status-tool`, `get-performance-stats-tool`, `get-lighthouse-audit-tool`, `get-certificate-status-tool`, `get-domain-status-tool` and `get-broken-links-tool`. None takes parameters: the connection scopes every call to one website. Each answers verdict first (what we found, why it matters, what to do) with the raw data following, so pass the verdict on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` rather than returning stale figures.
 
 ### Testing
 

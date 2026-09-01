@@ -60,37 +60,51 @@ Each error report includes:
 
 ## MCP Tools for Error Investigation
 
-Ranetrace hosts an MCP server with 31 tools: the 24 error and note tools below, plus 7 monitor tools (see *Monitor tools* at the end). It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running. All it needs is an MCP token.
+Ranetrace hosts an MCP server with 33 tools: the 24 error and note tools below, 7 monitor tools (see *Monitor tools* at the end), and 2 for notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
 
-### The MCP token is not the ingest key
+### Connecting: the client asks, the user approves
 
-The tools authenticate with an MCP token, a separate credential from `RANETRACE_KEY`. The key writes captured telemetry in and lives on every server; the token reads data back out and belongs on the machine running the MCP client. Create it on the website's `/mcp` page in Ranetrace, where you can mint one per agent, each named for where it runs, so revoking one leaves the others working.
-
-The token travels as a bearer header, so it stays with the client that uses it:
+Any MCP client that supports OAuth connects with no pre-shared secret. Give it the server URL; it registers itself, opens the user's browser at Ranetrace's approval screen, and comes back with a credential of its own:
 
 ```bash
-claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
+claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
 ```
 
-Clients configured from a file, Cursor and VS Code among them, read the same server as an `mcpServers` entry:
+On claude.ai the same URL is added as a custom connector. Clients configured from a file, Cursor and VS Code among them, read the same server as an `mcpServers` entry, with no `Authorization` header because their own client runs the approval:
 
 ```json
 {
   "mcpServers": {
     "ranetrace": {
       "type": "http",
-      "url": "https://api.ranetrace.com/mcp",
-      "headers": { "Authorization": "Bearer <token>" }
+      "url": "https://api.ranetrace.com/mcp"
     }
   }
 }
 ```
 
-An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
+### What the approval decides
+
+Two things, both chosen by the user and neither of them changeable from the agent's side:
+
+- **One website.** The connection reaches that site and nothing else in the account.
+- **Read or write.** Writes are off by default. A read-only connection reads errors, monitors, notes and notification rules; the tools that change anything are not registered for it at all, so they are absent from `tools/list` rather than refused at call time. That is why a tool below may simply not be there. Allowing write actions adds the error state and bulk tools, the note create/update/delete tools, and notification-rule updates.
+
+Connections are listed and revoked by the user on the agent connections page in their Ranetrace account, at `/user/profile/connections`. A machine with no browser can use the device authorization grant instead, entering the code it displays at `https://app.ranetrace.com/oauth/device`.
+
+### MCP tokens are the deprecated path
+
+Before connections, the tools authenticated with a static MCP token minted on the website's `/mcp` page and sent as a bearer header. Tokens still work and are still minted, until the migration window closes; a token names one website and always allows writes.
+
+```bash
+claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
+```
+
+Either way, the MCP credential is never `RANETRACE_KEY` and never lives in `.env`. The key writes captured telemetry in and lives on every server; the MCP credential reads data back out and belongs on the machine running the MCP client. An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
 
 ### The local MCP server has been removed
 
-This package used to register a local MCP server when `laravel/mcp` was installed and `RANETRACE_MCP_TOKEN` was set (`php artisan mcp:start ranetrace`). That server, its tools and the `ranetrace.mcp` config block are gone; the hosted server above is the only one. To move an application that still has the old setup, point the client at the hosted URL with the same token, then drop `RANETRACE_MCP_TOKEN` from `.env`.
+This package used to register a local MCP server when `laravel/mcp` was installed and `RANETRACE_MCP_TOKEN` was set (`php artisan mcp:start ranetrace`). That server, its tools and the `ranetrace.mcp` config block are gone; the hosted server above is the only one. To move an application that still has the old setup, point the client at the hosted URL and approve the connection in the browser, then drop `RANETRACE_MCP_TOKEN` from `.env`.
 
 ### Retrieving Errors
 
@@ -150,7 +164,7 @@ The same MCP server also answers for the website being monitored, not only the a
 | `GetDomainStatusTool` | Registrar, expiry, DNSSEC, registrar locks |
 | `GetBrokenLinksTool` | Broken links from the latest site audit, with the page each was found on |
 
-None of them takes parameters: the MCP token already scopes every call to one website.
+None of them takes parameters: the connection already scopes every call to one website.
 
 Each answers **verdict first** — what we found, why it matters, what to do — with the raw measurements following as evidence. Read the verdict and pass its wording on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` instead of returning stale figures, and the tool surfaces that message as-is.
 

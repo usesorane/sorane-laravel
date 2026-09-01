@@ -189,19 +189,48 @@ See the [Ranetrace website](https://ranetrace.com) for dashboard setup and confi
 
 ## MCP server
 
-Ranetrace hosts an MCP server so an agent can investigate errors and read your website's monitor verdicts without leaving the editor. It runs on Ranetrace, not in your application, so there is nothing to install and nothing to keep running. All you need is an MCP token, which you create on your website's `/mcp` page in Ranetrace.
+Ranetrace hosts an MCP server so an agent can investigate errors and read your website's monitor verdicts without leaving the editor. It runs on Ranetrace, not in your application, so there is nothing to install and nothing to keep running.
 
-The MCP token is a separate credential from `RANETRACE_KEY`. The key sends captured data in and lives on every production server; the token reads data back out and belongs on the machine running the MCP client. You can create as many tokens as you have agents, each named for where it runs, so revoking one leaves the others working.
+### Connect your agent
 
-### Configure it in your MCP client
+Give your MCP client the server URL. The client asks Ranetrace for access, your browser opens, and you approve the connection there. There is no secret to copy, and nothing goes into your application's environment:
 
-The token travels as a bearer header, which keeps it with the client that uses it rather than in your application's environment:
+```bash
+claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
+```
+
+On claude.ai, add that same URL as a custom connector. Clients that are configured from a file, Cursor and VS Code among them, read the same server as an `mcpServers` entry, and need no `Authorization` header because their own client runs the approval:
+
+```json
+{
+  "mcpServers": {
+    "ranetrace": {
+      "type": "http",
+      "url": "https://api.ranetrace.com/mcp"
+    }
+  }
+}
+```
+
+### What you approve
+
+The approval screen asks two things: which one of your websites the connection is for, and whether the agent may write. The connection reaches that one site and nothing else in your account.
+
+Write actions are off unless you turn them on. A read-only connection can read your errors, monitors, notes and notification rules, and the tools that change anything are not offered to it at all. Allow write actions and it can also resolve, ignore and delete errors, write notes, and change your notification rules.
+
+Every connection you have approved is listed under agent connections in your Ranetrace account, where you can see what each one reaches and revoke it.
+
+A machine with no browser, a script or a custom agent on a server, can use the device flow instead: it shows you a short code, you enter it at `https://app.ranetrace.com/oauth/device` on a device you are signed in on, and the same approval screen appears there.
+
+### MCP tokens are deprecated
+
+Before connections, an agent was handed a static MCP token, minted on your website's `/mcp` page and sent as a bearer header. Tokens still work and your existing ones keep authenticating, but they retire once the migration window closes, so connect new agents the way above. A token names one website and always allows writes; there is no read-only mode and no approval step.
+
+The MCP token is a separate credential from `RANETRACE_KEY`, and nothing about the key changes. The key sends captured data in and lives on every production server; the token reads data back out and belongs on the machine running the MCP client.
 
 ```bash
 claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
 ```
-
-Clients that are configured from a file, Cursor and VS Code among them, read the same server as an `mcpServers` entry:
 
 ```json
 {
@@ -219,7 +248,7 @@ Clients that are configured from a file, Cursor and VS Code among them, read the
 
 Before the hosted server existed, this package shipped its own MCP server, registered when `laravel/mcp` was installed and `RANETRACE_MCP_TOKEN` was set. That server, its tools and the `ranetrace.mcp` config block are gone.
 
-Moving over is one line of client config: point the client at `https://api.ranetrace.com/mcp` with the command above, using the same token. You can then drop `RANETRACE_MCP_TOKEN` from your `.env` and `laravel/mcp` from your application, if nothing else needs them.
+Moving over is one line of client config: point the client at `https://api.ranetrace.com/mcp` with the first command above and approve it in the browser. You can then drop `RANETRACE_MCP_TOKEN` from your `.env` and `laravel/mcp` from your application, if nothing else needs them.
 
 ### What the tools answer
 

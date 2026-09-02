@@ -1,6 +1,10 @@
 ---
 name: ranetrace-worker
-description: Set up and schedule the Ranetrace worker to flush buffered errors, events, logs, analytics, and JavaScript errors to the API.
+description: >-
+  Set up, schedule and troubleshoot the Ranetrace worker (ranetrace:work) that
+  flushes buffered errors, events, logs, analytics and JavaScript errors to the
+  API. Use when buffers grow without draining, features show as paused, or
+  nothing reaches Ranetrace.
 ---
 
 # Ranetrace Worker
@@ -90,7 +94,7 @@ php artisan ranetrace:pause-clear --all
 ## Troubleshooting
 
 **Buffers growing but not draining:**
-- Verify `ranetrace:work` is scheduled: check `routes/console.php` or `Kernel.php`
+- Verify `ranetrace:work` is scheduled in `routes/console.php`
 - Verify a queue worker is running: `php artisan queue:work`
 - Check for pauses: `php artisan ranetrace:status`
 

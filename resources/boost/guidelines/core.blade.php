@@ -82,7 +82,7 @@ At the approval screen the user picks **exactly one website** the connection may
 
 **MCP tokens are deprecated.** A static per-website token, minted on the website's `/mcp` page and sent as `Authorization: Bearer <token>`, is still accepted and still minted, but only until the migration window closes. It names one website and always allows writes. Use the OAuth connection above for anything new.
 
-**The local MCP server has been removed.** The `php artisan mcp:start ranetrace` server this package used to register, gated on `laravel/mcp` and `RANETRACE_MCP_TOKEN`, is gone, and so is the `ranetrace.mcp` config block. An application that still has `RANETRACE_MCP_TOKEN` in `.env` should drop it and connect the MCP client over OAuth.
+An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there is no local MCP server to run. Delete the variable and connect the MCP client over OAuth as above.
 
 The monitor tools are `get-monitor-status-tool` (which of my monitors needs a look), plus `get-uptime-status-tool`, `get-performance-stats-tool`, `get-lighthouse-audit-tool`, `get-certificate-status-tool`, `get-domain-status-tool` and `get-broken-links-tool`. None takes parameters: the connection scopes every call to one website. Each answers verdict first (what we found, why it matters, what to do) with the raw data following, so pass the verdict on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` rather than returning stale figures.
 

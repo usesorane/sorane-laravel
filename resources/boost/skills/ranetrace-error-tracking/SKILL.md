@@ -60,7 +60,7 @@ Each error report includes:
 
 ## MCP Tools for Error Investigation
 
-Ranetrace hosts an MCP server with 33 tools: the 24 error and note tools below, 7 monitor tools (see *Monitor tools* at the end), and 2 for notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
+Ranetrace hosts an MCP server covering error investigation, investigation notes, error state management, the monitored website's verdicts (see *Monitor tools* at the end) and the owner's notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
 
 ### Connecting: the client asks, the user approves
 
@@ -102,9 +102,7 @@ claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header
 
 Either way, the MCP credential is never `RANETRACE_KEY` and never lives in `.env`. The key writes captured telemetry in and lives on every server; the MCP credential reads data back out and belongs on the machine running the MCP client. An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
 
-### The local MCP server has been removed
-
-This package used to register a local MCP server when `laravel/mcp` was installed and `RANETRACE_MCP_TOKEN` was set (`php artisan mcp:start ranetrace`). That server, its tools and the `ranetrace.mcp` config block are gone; the hosted server above is the only one. To move an application that still has the old setup, point the client at the hosted URL and approve the connection in the browser, then drop `RANETRACE_MCP_TOKEN` from `.env`.
+An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there is no local MCP server to run. Point the client at the hosted URL above, approve the connection in the browser, and delete the variable from `.env`.
 
 ### Retrieving Errors
 
@@ -167,6 +165,13 @@ The same MCP server also answers for the website being monitored, not only the a
 None of them takes parameters: the connection already scopes every call to one website.
 
 Each answers **verdict first** — what we found, why it matters, what to do — with the raw measurements following as evidence. Read the verdict and pass its wording on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` instead of returning stale figures, and the tool surfaces that message as-is.
+
+## Notification rules
+
+| Tool | Description |
+|---|---|
+| `GetNotificationRulesTool` | The owner's notification rules, verdict first: it flags when a key alert such as website down is switched off |
+| `UpdateNotificationRulesTool` | Change those rules; they are account-wide, so a change made through one website's connection affects every website the owner has |
 
 ## Testing
 

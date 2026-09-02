@@ -25,8 +25,8 @@ Analytics is privacy-first: no cookies and no client-side scripts. Visitors are 
     'queue_name' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE_NAME', 'default'),
     'timeout' => env('RANETRACE_WEBSITE_ANALYTICS_TIMEOUT', 10),
     'excluded_paths' => [
-        'horizon', 'nova', 'telescope', 'admin', 'filament',
-        'api', 'debugbar', 'storage', 'livewire', '_debugbar',
+        'horizon', 'nova', 'telescope', 'admin', 'filament', 'api', 'debugbar',
+        'storage', 'livewire', '_debugbar', 'up', 'sanctum', '_ignition',
     ],
     'request_filter' => null,  // Custom filter class (FQCN)
     'user_agent' => [
@@ -41,16 +41,7 @@ Analytics is privacy-first: no cookies and no client-side scripts. Visitors are 
 
 The `excluded_paths` config array matches the **first URL segment**. To exclude `/admin/users`, add `'admin'` (this excludes all `/admin/*` routes).
 
-Add more paths directly in the config:
-
-```php
-'excluded_paths' => [
-    'horizon', 'nova', 'telescope', 'admin', 'filament',
-    'api', 'debugbar', 'storage', 'livewire', '_debugbar',
-    'webhooks',    // custom addition
-    'health',      // custom addition
-],
-```
+The array replaces the default, it does not merge with it: copy the default list from the published config and append your own first segments, for example `'webhooks'` and `'health'`.
 
 ## Custom Request Filters
 

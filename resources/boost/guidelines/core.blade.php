@@ -8,7 +8,7 @@ Ranetrace is an all-in-one monitoring package for Laravel providing error tracki
 - All env vars are prefixed with `RANETRACE_`
 - Required: set `RANETRACE_KEY` and `RANETRACE_ENABLED=true` in `.env`
 - Each feature has its own `enabled` toggle and can run via queue or synchronously
-- **`RANETRACE_KEY` is the ingest key and nothing else.** It writes captured telemetry in and belongs on every server, in `.env`. Reading data back out is the MCP server's job, and it uses its own credential, held by the MCP client rather than by the application: an OAuth connection the user approves in the browser, or, on the deprecated path, an MCP token in that client's `Authorization: Bearer` header. Sending the ingest key to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`. Never put an MCP credential in `.env`.
+- **`RANETRACE_KEY` is the ingest key and nothing else.** It writes captured telemetry in and belongs on every server, in `.env`. Reading data back out is the MCP server's job, and it uses its own credential, held by the MCP client rather than by the application: an OAuth connection the user approves in the browser. Sending the ingest key to an MCP endpoint returns a 401 with `error_code: MCP_OAUTH_REQUIRED`. Never put an MCP credential in `.env`.
 
 ### Features & Env Vars
 
@@ -78,9 +78,9 @@ claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
 
 On claude.ai the same URL is added as a custom connector. Clients configured from a file (Cursor, VS Code) read the same server as an `mcpServers` entry with `"type": "http"` and the same URL, and need no `Authorization` header.
 
-At the approval screen the user picks **exactly one website** the connection may reach, and whether the agent may write. Writes are off by default: a read-only connection reads errors, monitors, notes and notification rules, and does not see the write tools at all (they are absent from `tools/list`, not refused at call time). Turning on write actions adds error state changes, note create/update/delete, and notification-rule updates. Connections are listed and revoked on the account's agent connections page in Ranetrace, at `/user/profile/connections`. A headless machine can use the device authorization grant instead, entering its code at `https://app.ranetrace.com/oauth/device`.
+At the approval screen the user picks **exactly one website** the connection may reach, and whether the agent may write. Writes are off by default: a read-only connection reads errors, monitors, notes and notification rules, and does not see the write tools at all (they are absent from `tools/list`, not refused at call time). Turning on write actions adds error state changes, note create/update/delete, and notification-rule updates. Connections are listed and revoked on the account's agent connections page in Ranetrace, at `/user/profile/connections`, which also carries the connect instructions. A headless machine can use the device authorization grant instead, entering its code at `https://app.ranetrace.com/oauth/device`.
 
-**MCP tokens are deprecated.** A static per-website token, minted on the website's `/mcp` page and sent as `Authorization: Bearer <token>`, is still accepted and still minted, but only until the migration window closes. It names one website and always allows writes. Use the OAuth connection above for anything new.
+**MCP tokens are retired.** A static per-website token is no longer accepted: a client still sending one gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and instructions to reconnect over OAuth.
 
 An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there is no local MCP server to run. Delete the variable and connect the MCP client over OAuth as above.
 

@@ -90,17 +90,13 @@ Two things, both chosen by the user and neither of them changeable from the agen
 - **One website.** The connection reaches that site and nothing else in the account.
 - **Read or write.** Writes are off by default. A read-only connection reads errors, monitors, notes and notification rules; the tools that change anything are not registered for it at all, so they are absent from `tools/list` rather than refused at call time. That is why a tool below may simply not be there. Allowing write actions adds the error state and bulk tools, the note create/update/delete tools, and notification-rule updates.
 
-Connections are listed and revoked by the user on the agent connections page in their Ranetrace account, at `/user/profile/connections`. A machine with no browser can use the device authorization grant instead, entering the code it displays at `https://app.ranetrace.com/oauth/device`.
+Connections are listed and revoked by the user on the agent connections page in their Ranetrace account, at `/user/profile/connections`, which also carries the connect instructions. A machine with no browser can use the device authorization grant instead, entering the code it displays at `https://app.ranetrace.com/oauth/device`.
 
-### MCP tokens are the deprecated path
+### MCP tokens are retired
 
-Before connections, the tools authenticated with a static MCP token minted on the website's `/mcp` page and sent as a bearer header. Tokens still work and are still minted, until the migration window closes; a token names one website and always allows writes.
+Before connections, the tools authenticated with a static MCP token sent as a bearer header. Those tokens are no longer accepted: a client still sending one gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and instructions to remove the header and reconnect over OAuth, as above.
 
-```bash
-claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
-```
-
-Either way, the MCP credential is never `RANETRACE_KEY` and never lives in `.env`. The key writes captured telemetry in and lives on every server; the MCP credential reads data back out and belongs on the machine running the MCP client. An ingest key sent to an MCP endpoint returns a 403 with `error_code: MCP_TOKEN_REQUIRED`, and every tool surfaces that as instructions rather than a generic failure.
+The MCP credential is never `RANETRACE_KEY` and never lives in `.env`. The key writes captured telemetry in and lives on every server; the MCP credential reads data back out and belongs on the machine running the MCP client. An ingest key, or an old MCP token, sent to an MCP endpoint returns that same 401 with `error_code: MCP_OAUTH_REQUIRED`, and every tool surfaces it as instructions rather than a generic failure.
 
 An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there is no local MCP server to run. Point the client at the hosted URL above, approve the connection in the browser, and delete the variable from `.env`.
 

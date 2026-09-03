@@ -4,6 +4,13 @@ All notable changes to `ranetrace-laravel` will be documented in this file.
 
 This file starts at 1.0.0. The package was re-versioned to share a major with `ranetrace/ranetrace-php`, which it now requires; the releases before that point are not recorded here, the git history is the record for those.
 
+## [Unreleased]
+
+### Changed
+- **MCP tokens are retired.** The static per-website token is no longer accepted by the hosted MCP server: a client still sending one as `Authorization: Bearer`, or sending the ingest key `RANETRACE_KEY` there, gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and a message telling it to remove the header and reconnect over OAuth. The old 403 `MCP_TOKEN_REQUIRED` answer no longer exists. The README, the Boost guideline and the error-tracking skill describe the OAuth connection as the only MCP credential and no longer show the bearer-header commands
+- The website's `/mcp` page is gone. The instructions for connecting an agent now live on the account's agent connections page in Ranetrace, at `/user/profile/connections`, next to the list of approved connections
+- The `ApiKeyCheck` hint, the `ranetrace:status` recommendation and the dashboard status comment no longer speak of "a separate token" for the MCP tools; they say the MCP tools use an OAuth connection held by the MCP client. Nothing about `RANETRACE_KEY` changes: it is the ingest key and belongs on every server
+
 ## [1.1.1] - 2026-08-27
 
 ### Removed

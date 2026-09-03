@@ -218,31 +218,15 @@ The approval screen asks two things: which one of your websites the connection i
 
 Write actions are off unless you turn them on. A read-only connection can read your errors, monitors, notes and notification rules, and the tools that change anything are not offered to it at all. Allow write actions and it can also resolve, ignore and delete errors, write notes, and change your notification rules.
 
-Every connection you have approved is listed under agent connections in your Ranetrace account, where you can see what each one reaches and revoke it.
+Every connection you have approved is listed under agent connections in your Ranetrace account, at `/user/profile/connections`, where you can see what each one reaches and revoke it. The instructions for connecting an agent live on that page too.
 
 A machine with no browser, a script or a custom agent on a server, can use the device flow instead: it shows you a short code, you enter it at `https://app.ranetrace.com/oauth/device` on a device you are signed in on, and the same approval screen appears there.
 
-### MCP tokens are deprecated
+### MCP tokens are retired
 
-Before connections, an agent was handed a static MCP token, minted on your website's `/mcp` page and sent as a bearer header. Tokens still work and your existing ones keep authenticating, but they retire once the migration window closes, so connect new agents the way above. A token names one website and always allows writes; there is no read-only mode and no approval step.
+Before connections, an agent was handed a static MCP token and sent it as a bearer header. Those tokens are no longer accepted. A client that still sends one gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and a message telling it to remove the header and reconnect over OAuth, the way above.
 
-The MCP token is a separate credential from `RANETRACE_KEY`, and nothing about the key changes. The key sends captured data in and lives on every production server; the token reads data back out and belongs on the machine running the MCP client.
-
-```bash
-claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp --header "Authorization: Bearer <token>"
-```
-
-```json
-{
-  "mcpServers": {
-    "ranetrace": {
-      "type": "http",
-      "url": "https://api.ranetrace.com/mcp",
-      "headers": { "Authorization": "Bearer <token>" }
-    }
-  }
-}
-```
+The MCP credential is separate from `RANETRACE_KEY`, and nothing about the key changes. The key sends captured data in and lives on every production server; the connection reads data back out and belongs to the MCP client.
 
 ### The local MCP server has been removed
 

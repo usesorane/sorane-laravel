@@ -175,7 +175,7 @@ class RanetraceStatusCommand extends Command
             }
 
             if (! $status['config']['api_key_configured']) {
-                $this->line('• Configure RANETRACE_KEY in .env (the ingest key; the MCP tools use a separate token, held by your MCP client)');
+                $this->line('• Configure RANETRACE_KEY in .env (the ingest key; the MCP tools use an OAuth connection, held by your MCP client)');
             }
 
             if ($status['pauses']['global']) {

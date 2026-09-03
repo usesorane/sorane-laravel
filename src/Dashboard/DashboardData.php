@@ -199,8 +199,8 @@ class DashboardData
             'config' => [
                 'enabled' => config('ranetrace.enabled', true),
                 // Only whether the ingest key is set is reported, never the
-                // value. The MCP token is a different credential entirely and
-                // lives with the MCP client, not in this application.
+                // value. The MCP tools use an OAuth connection, a different
+                // credential entirely, held by the MCP client, not by this application.
                 'api_key_configured' => ! empty(config('ranetrace.key')),
                 'cache_driver' => config('ranetrace.batch.cache_driver', 'file'),
                 'queue_name' => config('ranetrace.batch.queue_name', 'default'),

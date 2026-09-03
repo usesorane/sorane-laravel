@@ -39,8 +39,8 @@ test('the ingest key is reported as present without exposing its value', functio
 });
 
 test('no MCP surface is reported now the local server is gone', function (): void {
-    // The MCP server is hosted by Ranetrace and the token lives with the MCP
-    // client, so this application registers nothing for it to introspect.
+    // The MCP server is hosted by Ranetrace and its OAuth connection lives with
+    // the MCP client, so this application registers nothing for it to introspect.
     $labels = collect(app(DashboardData::class)->registeredSurfaces())->pluck('label');
 
     expect($labels)->not->toContain('MCP server');
